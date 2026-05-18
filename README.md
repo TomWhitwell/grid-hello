@@ -6,8 +6,6 @@ Single-file browser instruments for a 16 x 8 monome grid. The page talks directl
 
 Hosted page: <https://tomwhitwell.github.io/grid-hello/>
 
-TouchOSC / TouchOSC Bridge cannot provide the grid connection for this page. This is direct Web Serial: the grid must be plugged into the computer running the browser and selected from `Connect grid`.
-
 Use desktop Chrome or Edge. Safari, Firefox, and iPhone/iPad browsers do not currently expose the Web Serial API used here.
 
 If serialosc owns the grid port, stop it first:
