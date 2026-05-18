@@ -4,7 +4,9 @@ Single-file browser instruments for a 16 x 8 monome grid. The page talks directl
 
 ## Host on GitHub Pages
 
-This repo includes a GitHub Actions Pages workflow. Push `main`, then in the GitHub repo go to Settings -> Pages and set Source to `GitHub Actions` if it is not already selected. The site will be served over HTTPS, which is suitable for Web Serial in Chrome/Edge.
+This repo includes a GitHub Actions Pages workflow. Before the first successful deploy, open the GitHub repo, go to Settings -> Pages, and set Source to `GitHub Actions`. Then push `main` or rerun the failed workflow. The site will be served over HTTPS, which is suitable for Web Serial in Chrome/Edge.
+
+If the first workflow says `Get Pages site failed`, Pages has not been enabled for the repo yet. Flip that setting once, then rerun the workflow.
 
 ## Run locally on macOS
 
