@@ -1452,6 +1452,7 @@
       reset() {
         this.playRows = Math.max(1, state.rows - 2);
         this.steps = Array.from({ length: this.playRows }, () => Array(state.cols).fill(0));
+        this.voiceOn = Array(this.playRows).fill(true);
         this.pos = 0;
         this.loopStart = 0;
         this.loopEnd = state.cols - 1;
@@ -1480,6 +1481,9 @@
             audio.pluck(this.notes[noteIndex % this.notes.length], 0.09, 0.07, y % 2 ? "triangle" : "square");
           }
           feedback = `studies: ${this.steps[y][x] ? "on" : "off"} row ${y + 1}, step ${x + 1}.`;
+        } else if (y === state.rows - 2 && x < this.playRows) {
+          this.voiceOn[x] = !this.voiceOn[x];
+          feedback = `studies: voice ${x + 1} ${this.voiceOn[x] ? "on" : "muted"}.`;
         } else if (y === state.rows - 1) {
           if (this.bottomHeld.size > 0) {
             const first = [...this.bottomHeld][0];
@@ -1496,7 +1500,7 @@
       tick() {
         this.pos = this.pos >= this.loopEnd ? this.loopStart : this.pos + 1;
         for (let y = 0; y < this.playRows; y += 1) {
-          if (this.steps[y][this.pos]) {
+          if (this.steps[y][this.pos] && this.voiceOn[y]) {
             const noteIndex = this.playRows - 1 - y;
             audio.pluck(this.notes[noteIndex % this.notes.length], 0.14, 0.14 + y * 0.008, y % 2 ? "triangle" : "square");
           }
@@ -1515,8 +1519,8 @@
         const activity = state.rows - 2;
         for (let x = this.loopStart; x <= this.loopEnd; x += 1) levels[state.rows - 1][x] = 4;
         for (let y = 0; y < this.playRows; y += 1) {
-          if (this.steps[y][this.pos]) levels[activity][y] = 15;
-          else levels[activity][y] = 2;
+          levels[activity][y] = this.voiceOn[y] ? 8 : 2;
+          if (this.steps[y][this.pos]) levels[activity][y] = this.voiceOn[y] ? 15 : 5;
         }
         levels[state.rows - 1][this.pos] = 15;
         drawFrame(levels);
@@ -2622,6 +2626,7 @@
         source: "Based on monome grid studies Max/Node/Python sequencer lessons.",
         help: [
           "Press rows 1-6 to toggle notes.",
+          "Row 7 keys 1-6 mute/unmute those note rows; lit means active.",
           "Bottom row jumps the playhead; hold one bottom key and press another to set a loop.",
           "Randomize fills a sparse pattern.",
           "Synth touch: x opens the shared filter, y lengthens decay."
