@@ -2,32 +2,40 @@
 
 Single-file browser instruments for a 16 x 8 monome grid. The page talks directly to the grid with Web Serial and makes sound with WebAudio. It does not use serialosc, OSC, Node.js, npm packages, or a local bridge process.
 
-## Run locally on macOS
+## Connect
 
-1. Stop serialosc if it owns the grid port:
+Hosted page: <https://tomwhitwell.github.io/grid-hello/>
 
-   ```sh
-   brew services stop serialosc
-   ```
+TouchOSC / TouchOSC Bridge cannot provide the grid connection for this page. This is direct Web Serial: the grid must be plugged into the computer running the browser and selected from `Connect grid`.
 
-2. Start a local static server from this folder:
+Use desktop Chrome or Edge. Safari, Firefox, and iPhone/iPad browsers do not currently expose the Web Serial API used here.
 
-   ```sh
-   python3 -m http.server 8000
-   ```
+If serialosc owns the grid port, stop it first:
 
-3. Open Chrome or Edge to:
+```sh
+brew services stop serialosc
+```
 
-   ```text
-   http://localhost:8000/
-   ```
-
-4. Click `Connect grid`, select the monome serial device, and click `Enable audio` if the browser has not already enabled it.
+Click `Connect grid`, select the monome serial device, and click `Enable audio` if the browser has not already enabled it.
 
 Restart serialosc later with:
 
 ```sh
 brew services start serialosc
+```
+
+## Run locally on macOS
+
+For offline use or development, start a local static server from this folder:
+
+```sh
+python3 -m http.server 8000
+```
+
+Open Chrome or Edge to:
+
+```text
+http://localhost:8000/
 ```
 
 ## Ports and studies

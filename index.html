@@ -575,14 +575,14 @@
       </aside>
     </section>
 
-    <section class="notes" aria-label="local hosting instructions">
-      <h2>macOS local hosting</h2>
+    <section class="notes" aria-label="connection notes">
+      <h2>before connecting</h2>
       <ol>
-        <li>Use Chrome or Edge. Safari and Firefox do not currently expose the Web Serial API used here.</li>
-        <li>From this folder, run <code>python3 -m http.server 8000</code>.</li>
-        <li>Open <code>http://localhost:8000/</code>, connect the grid over USB, then press <code>Connect grid</code>.</li>
-        <li>If serialosc is installed and holding the port, stop it first with <code>brew services stop serialosc</code>.</li>
+        <li>TouchOSC / TouchOSC Bridge cannot provide the grid connection for this page. This is direct Web Serial: the grid must be plugged into this computer and selected from <code>Connect grid</code>.</li>
+        <li>Use desktop Chrome or Edge. Safari, Firefox, and iPhone/iPad browsers do not expose Web Serial for this.</li>
+        <li>If serialosc is holding the grid port, stop it first with <code>brew services stop serialosc</code>.</li>
         <li>After using this page, restart serialosc with <code>brew services start serialosc</code> if you want normal monome apps to see the grid again.</li>
+        <li>For offline/local development, run <code>python3 -m http.server 8000</code> from this folder and use <code>http://localhost:8000/</code>.</li>
       </ol>
       <div class="doc-callout">
         <strong>building your own grid web app</strong>
