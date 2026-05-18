@@ -2,12 +2,6 @@
 
 Single-file browser instruments for a 16 x 8 monome grid. The page talks directly to the grid with Web Serial and makes sound with WebAudio. It does not use serialosc, OSC, Node.js, npm packages, or a local bridge process.
 
-## Host on GitHub Pages
-
-This repo includes a GitHub Actions Pages workflow. Before the first successful deploy, open the GitHub repo, go to Settings -> Pages, and set Source to `GitHub Actions`. Then push `main` or rerun the failed workflow. The site will be served over HTTPS, which is suitable for Web Serial in Chrome/Edge.
-
-If the first workflow says `Get Pages site failed`, Pages has not been enabled for the repo yet. Flip that setting once, then rerun the workflow.
-
 ## Run locally on macOS
 
 1. Stop serialosc if it owns the grid port:
@@ -54,9 +48,9 @@ The launcher now starts with the sample instruments, then includes the new perfo
 
 Each app exposes its own little readme in the right panel.
 
-The fixed `synth` panel is shared by the non-sample instruments: wave, attack, decay, lowpass, Q, drive, and level stay in the same place while the grid apps act as sequencers, note fields, or trigger surfaces. In non-sample apps, pressed grid position can also push filter and decay so the sequencer can reach into the common voice without each app needing its own scattered sound controls. The master `bpm` slider retimes the active app clock.
+The fixed `synth` panel is shared by the non-sample instruments: wave, attack, decay, lowpass, Q, drive, and level stay in the same place while the grid apps act as sequencers, note fields, or trigger surfaces. In non-sample apps, pressed grid position can also push filter and decay so the sequencer can reach into the common voice without each app needing its own scattered sound controls. The master `bpm` slider retimes the active app clock, and the `led curve` slider adjusts how strongly mid-level varibright values are compressed on the hardware grid.
 
-Hardware LED output uses a deliberately compressed brightness curve. App frames still use the full 0-15 varibright vocabulary internally, but outgoing grid frames keep only level 15 fully bright; non-peak states are pushed down so active keys read like Loom: bright events over a dim field.
+Hardware LED output uses an adjustable brightness curve. App frames still use the full 0-15 varibright vocabulary internally; the `led curve` control blends between linear output and the more compressed Loom-like bright-events-over-dim-field response.
 
 ## Protocol notes
 

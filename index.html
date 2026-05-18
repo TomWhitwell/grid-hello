@@ -219,7 +219,9 @@
     }
 
     .tempo {
-      width: min(390px, 100%);
+      display: grid;
+      gap: 7px;
+      width: min(430px, 100%);
       margin-bottom: 14px;
       border-top: 1px solid var(--line);
       padding-top: 12px;
@@ -242,15 +244,17 @@
 
     .work {
       display: grid;
-      grid-template-columns: max-content minmax(260px, 1fr) minmax(240px, 310px);
-      gap: 26px;
+      grid-template-columns: minmax(0, 348px) minmax(250px, 1fr) minmax(230px, 300px);
+      gap: 22px;
       align-items: start;
       border-top: 1px solid var(--line);
       padding-top: 14px;
     }
 
     .grid-wrap {
-      overflow-x: auto;
+      width: fit-content;
+      max-width: 100%;
+      overflow: visible;
     }
 
     #grid {
@@ -262,11 +266,13 @@
       grid-template-columns: repeat(var(--cols), var(--cell));
       grid-template-rows: repeat(var(--rows), var(--cell));
       gap: var(--gap);
-      width: max-content;
+      width: fit-content;
+      max-width: 100%;
       min-width: 0;
       padding: 6px;
       border: 1px solid var(--line);
       background: transparent;
+      overflow: hidden;
     }
 
     .cell {
@@ -284,6 +290,7 @@
     .engine-panel {
       display: grid;
       gap: 10px;
+      min-width: 0;
       border-top: 1px solid var(--line);
       padding-top: 13px;
     }
@@ -319,7 +326,7 @@
 
     .param {
       display: grid;
-      grid-template-columns: 78px minmax(0, 1fr) 48px;
+      grid-template-columns: 78px minmax(0, 1fr) 64px;
       gap: 9px;
       align-items: center;
       color: var(--muted);
@@ -375,6 +382,7 @@
     .readme {
       display: grid;
       gap: 12px;
+      min-width: 0;
       border-top: 1px solid var(--line);
       padding-top: 15px;
     }
@@ -433,8 +441,12 @@
         grid-template-columns: 1fr;
       }
 
+      .grid-wrap {
+        width: 100%;
+      }
+
       #grid {
-        --cell: 17px;
+        --cell: min(17px, calc((100vw - 74px) / 16));
       }
     }
 
@@ -476,6 +488,11 @@
         <span>bpm</span>
         <input id="master-bpm" type="range" min="40" max="220" step="1" value="120">
         <span id="master-bpm-value">120</span>
+      </label>
+      <label class="param">
+        <span>led curve</span>
+        <input id="led-curve" type="range" min="0" max="100" step="1" value="45">
+        <span id="led-curve-value">soft</span>
       </label>
     </section>
 
@@ -600,6 +617,8 @@
       source: document.querySelector("#app-source"),
       bpm: document.querySelector("#master-bpm"),
       bpmValue: document.querySelector("#master-bpm-value"),
+      ledCurve: document.querySelector("#led-curve"),
+      ledCurveValue: document.querySelector("#led-curve-value"),
       synthPanel: document.querySelector("#synth-panel"),
       samplePanel: document.querySelector("#sample-panel"),
       panelLoadSample: document.querySelector("#panel-load-sample"),
@@ -630,7 +649,8 @@
       appKey: "splice",
       app: null,
       pointerDown: null,
-      bpm: 120
+      bpm: 120,
+      ledCurve: 45
     };
 
     const gridSerial = new MonomeGridSerial({
@@ -1260,6 +1280,21 @@
       if (state.app?.timerSubdivision) setTimer(state.app, state.app.timerSubdivision);
     }
 
+    function ledCurveLabel(value) {
+      if (value <= 8) return "linear";
+      if (value <= 35) return "open";
+      if (value <= 70) return "soft";
+      if (value <= 90) return "dim";
+      return "peak";
+    }
+
+    function updateLedCurve(value) {
+      state.ledCurve = clamp(Number(value), 0, 100);
+      els.ledCurve.value = state.ledCurve;
+      els.ledCurveValue.textContent = ledCurveLabel(state.ledCurve);
+      state.app?.draw();
+    }
+
     function keyFor(x, y) {
       return `${x},${y}`;
     }
@@ -1359,6 +1394,12 @@
       const v = clamp(Math.round(level), 0, MAX_LEVEL);
       if (v <= 0) return 0;
       if (v >= 15) return 15;
+      const compressed = compressedHardwareLevel(v);
+      const blend = clamp(state.ledCurve / 100, 0, 1);
+      return clamp(Math.round(v * (1 - blend) + compressed * blend), 0, MAX_LEVEL);
+    }
+
+    function compressedHardwareLevel(v) {
       if (v >= 14) return 8;
       if (v >= 13) return 6;
       if (v >= 11) return 4;
@@ -2472,7 +2513,7 @@
 
       tick() {
         const next = new Set();
-        let births = 0;
+        const births = [];
         for (let y = 0; y < state.rows; y += 1) {
           for (let x = 0; x < state.cols; x += 1) {
             const key = keyFor(x, y);
@@ -2480,15 +2521,32 @@
             const n = this.count(x, y);
             if ((live && (n === 2 || n === 3)) || (!live && n === 3)) {
               next.add(key);
-              if (!live) births += 1;
+              if (!live) births.push({ x, y });
             }
           }
         }
         this.cells = next;
         this.generation += 1;
-        if (births > 0) audio.pluck(45 + (births % 18), 0.12, Math.min(0.24, 0.04 + births / 80), "triangle");
-        if (this.generation % 8 === 0 && this.cells.size > 0) audio.hat(0.04);
+        this.playBirths(births);
         this.draw();
+      }
+
+      playBirths(births) {
+        if (!births.length) return;
+        const scale = [0, 2, 3, 5, 7, 9, 10, 12];
+        const maxVoices = Math.min(8, births.length);
+        const stride = Math.max(1, Math.floor(births.length / maxVoices));
+        for (let i = 0; i < births.length && i / stride < maxVoices; i += stride) {
+          const birth = births[i];
+          const degree = (birth.x + state.cols - birth.y) % scale.length;
+          const octave = birth.y < state.rows / 2 ? 12 : 0;
+          const note = 43 + octave + scale[degree];
+          const pan = (birth.x / Math.max(1, state.cols - 1)) * 1.4 - 0.7;
+          audio.tone(audio.midi(note), 0.18 + birth.y * 0.015, "triangle", 0.035 + 0.015 * Math.min(4, births.length), pan, 0.25, {
+            filterMul: 1.1 + birth.x / Math.max(1, state.cols),
+            decayMul: 0.8
+          });
+        }
       }
 
       draw() {
@@ -2634,11 +2692,11 @@
       life: {
         label: "life",
         title: "life",
-        summary: "The earlier Game of Life mode, now with small audio events from births and population pulses.",
+        summary: "The earlier Game of Life mode, now with small polyphonic audio events from new births.",
         source: "Local mode, using the same grid frame renderer as the app ports.",
         help: [
           "Press keys to toggle live cells.",
-          "Births create pitched ticks; population pulses add a faint noise tick.",
+          "New births create small pitched clusters based on their grid positions.",
           "Randomize makes a fresh starting soup.",
           "Synth touch: x opens the shared filter, y lengthens decay."
         ],
@@ -2753,6 +2811,7 @@
     els.clear.addEventListener("click", clearHardware);
     els.audio.addEventListener("click", () => audio.ensure());
     els.bpm.addEventListener("input", () => updateBpm(els.bpm.value));
+    els.ledCurve.addEventListener("input", () => updateLedCurve(els.ledCurve.value));
     els.mic.addEventListener("click", () => {
       if (samples.isRecording || samples.isStopping) samples.toggleRecord();
       else samples.ensureMic();
@@ -2802,6 +2861,7 @@
     renderTabs();
     bindSynthControls();
     updateBpm(state.bpm);
+    updateLedCurve(state.ledCurve);
     selectApp(state.appKey);
     samples.loadDefault();
   </script>
