@@ -1,0 +1,2809 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>grid direct instruments</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f4f3ef;
+      --fg: #111111;
+      --muted: #62625d;
+      --panel: #f8f7f2;
+      --line: #cbc8bf;
+      --key: #e1dfd6;
+      --key-border: #aca89b;
+      --accent: #595f64;
+      --accent-strong: #202326;
+      --app: #5e6a70;
+      --signal: #d86f12;
+      --warn: #9a3412;
+      --rec: #b91c1c;
+      --live: #151515;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #12130f;
+        --fg: #efeee7;
+        --muted: #aaa79c;
+        --panel: #1b1c18;
+        --line: #3a3932;
+        --key: #282922;
+        --key-border: #4c4b42;
+        --accent: #9da3a4;
+        --accent-strong: #eeeeea;
+        --app: #a5adaa;
+        --signal: #f59e0b;
+        --warn: #f7a928;
+        --rec: #ef4444;
+        --live: #f3f0e8;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      line-height: 1.4;
+    }
+
+    main {
+      width: min(1040px, calc(100vw - 28px));
+      margin: 0 auto;
+      padding: 18px 0 38px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      align-items: end;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 14px;
+      margin-bottom: 16px;
+    }
+
+    h1, h2, p {
+      margin: 0;
+    }
+
+    h1 {
+      font-size: clamp(1.45rem, 3vw, 2.2rem);
+      line-height: 1.05;
+      letter-spacing: 0;
+      font-weight: 500;
+      text-transform: lowercase;
+    }
+
+    p, li {
+      color: var(--muted);
+    }
+
+    button {
+      appearance: none;
+      border: 1px solid color-mix(in srgb, var(--app) 45%, var(--line));
+      border-radius: 2px;
+      background: color-mix(in srgb, var(--app) 16%, var(--panel));
+      color: var(--fg);
+      cursor: pointer;
+      font: inherit;
+      font-size: 0.78rem;
+      font-weight: 500;
+      letter-spacing: 0.03em;
+      min-height: 34px;
+      padding: 0 11px;
+      text-transform: lowercase;
+    }
+
+    select,
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--fg);
+      font: inherit;
+    }
+
+    select {
+      min-height: 28px;
+      border: 1px solid var(--line);
+      border-radius: 2px;
+      background: transparent;
+      color: var(--fg);
+      padding: 0 7px;
+      text-transform: lowercase;
+    }
+
+    button:hover {
+      background: color-mix(in srgb, var(--app) 28%, var(--panel));
+      border-color: color-mix(in srgb, var(--app) 75%, var(--line));
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    #connect:not(:disabled) {
+      min-height: 44px;
+      padding: 0 18px;
+      border-color: color-mix(in srgb, var(--signal) 78%, var(--line));
+      background: color-mix(in srgb, var(--signal) 24%, var(--panel));
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--signal) 16%, transparent);
+      animation: signal-pulse 1.45s ease-in-out infinite;
+    }
+
+    #connect:not(:disabled):hover {
+      background: color-mix(in srgb, var(--signal) 36%, var(--panel));
+      border-color: var(--signal);
+    }
+
+    @keyframes signal-pulse {
+      0%, 100% {
+        background: color-mix(in srgb, var(--signal) 18%, var(--panel));
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--signal) 12%, transparent);
+      }
+
+      50% {
+        background: color-mix(in srgb, var(--signal) 42%, var(--panel));
+        box-shadow: 0 0 0 5px color-mix(in srgb, var(--signal) 28%, transparent);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      #connect:not(:disabled) {
+        animation: none;
+        background: color-mix(in srgb, var(--signal) 34%, var(--panel));
+      }
+    }
+
+    .secondary {
+      background: transparent;
+      color: var(--fg);
+    }
+
+    .secondary:hover,
+    .tab.active {
+      background: color-mix(in srgb, var(--app) 18%, transparent);
+      color: var(--accent-strong);
+    }
+
+    button.recording {
+      border-color: color-mix(in srgb, var(--rec) 86%, var(--line));
+      background: color-mix(in srgb, var(--rec) 34%, var(--panel));
+      color: var(--fg);
+    }
+
+    button.recording:hover {
+      background: color-mix(in srgb, var(--rec) 44%, var(--panel));
+    }
+
+    .tab[data-app="strata"] { --app: #66746d; }
+    .tab[data-app="lumen"] { --app: #766d58; }
+    .tab[data-app="splice"] { --app: #6f695d; }
+    .tab[data-app="undertow"] { --app: #5b6f72; }
+    .tab[data-app="studies"] { --app: #5c6468; }
+    .tab[data-app="meadow"] { --app: #596b5c; }
+    .tab[data-app="awake"] { --app: #68605c; }
+    .tab[data-app="loom"] { --app: #66626e; }
+    .tab[data-app="buoys"] { --app: #596a70; }
+    .tab[data-app="arcologies"] { --app: #6d6759; }
+    .tab[data-app="life"] { --app: #5d665c; }
+
+    .top-actions,
+    .tabs,
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .tabs {
+      margin-bottom: 14px;
+    }
+
+    .tab {
+      min-height: 38px;
+      border-color: var(--line);
+    }
+
+    .controls {
+      margin-bottom: 12px;
+    }
+
+    .tempo {
+      width: min(390px, 100%);
+      margin-bottom: 14px;
+      border-top: 1px solid var(--line);
+      padding-top: 12px;
+    }
+
+    #status {
+      min-height: 28px;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      padding: 4px 0;
+    }
+
+    #status.warning {
+      color: var(--warn);
+    }
+
+    #status.recording {
+      color: var(--rec);
+    }
+
+    .work {
+      display: grid;
+      grid-template-columns: max-content minmax(260px, 1fr) minmax(240px, 310px);
+      gap: 26px;
+      align-items: start;
+      border-top: 1px solid var(--line);
+      padding-top: 14px;
+    }
+
+    .grid-wrap {
+      overflow-x: auto;
+    }
+
+    #grid {
+      --cols: 16;
+      --rows: 8;
+      --cell: 18px;
+      --gap: 3px;
+      display: grid;
+      grid-template-columns: repeat(var(--cols), var(--cell));
+      grid-template-rows: repeat(var(--rows), var(--cell));
+      gap: var(--gap);
+      width: max-content;
+      min-width: 0;
+      padding: 6px;
+      border: 1px solid var(--line);
+      background: transparent;
+    }
+
+    .cell {
+      position: relative;
+      min-width: 0;
+      width: var(--cell);
+      height: var(--cell);
+      border: 1px solid var(--key-border);
+      border-radius: 2px;
+      background: var(--key);
+      cursor: pointer;
+      transition: background 50ms linear, border-color 50ms linear, box-shadow 50ms linear;
+    }
+
+    .engine-panel {
+      display: grid;
+      gap: 10px;
+      border-top: 1px solid var(--line);
+      padding-top: 13px;
+    }
+
+    .engine-panel h2 {
+      margin: 0;
+      font-size: 1.05rem;
+      font-weight: 500;
+      text-transform: lowercase;
+    }
+
+    .engine-panel[hidden] {
+      display: none;
+    }
+
+    .panel-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .sample-meta {
+      display: grid;
+      gap: 4px;
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .sample-meta strong {
+      color: var(--fg);
+      font-weight: 500;
+    }
+
+    .param {
+      display: grid;
+      grid-template-columns: 78px minmax(0, 1fr) 48px;
+      gap: 9px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+
+    .param span:last-child {
+      color: var(--fg);
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+    }
+
+    .param-select {
+      grid-template-columns: 78px minmax(0, 1fr);
+    }
+
+    .cell[data-level="1"], .cell[data-level="2"], .cell[data-level="3"] {
+      background: color-mix(in srgb, var(--live) 18%, var(--key));
+    }
+
+    .cell[data-level="4"], .cell[data-level="5"], .cell[data-level="6"], .cell[data-level="7"] {
+      background: color-mix(in srgb, var(--live) 36%, var(--key));
+    }
+
+    .cell[data-level="8"], .cell[data-level="9"], .cell[data-level="10"], .cell[data-level="11"] {
+      background: color-mix(in srgb, var(--live) 58%, var(--key));
+      border-color: color-mix(in srgb, var(--live) 42%, var(--key-border));
+    }
+
+    .cell[data-level="12"], .cell[data-level="13"], .cell[data-level="14"], .cell[data-level="15"] {
+      background: var(--live);
+      border-color: var(--live);
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent);
+    }
+
+    .cell::after {
+      content: attr(data-label);
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      color: color-mix(in srgb, var(--fg) 42%, transparent);
+      font-size: 10px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .cell:hover::after,
+    .cell:focus-visible::after {
+      opacity: 1;
+    }
+
+    .readme {
+      display: grid;
+      gap: 12px;
+      border-top: 1px solid var(--line);
+      padding-top: 15px;
+    }
+
+    .readme h2 {
+      font-size: 1.05rem;
+      letter-spacing: 0;
+      font-weight: 500;
+      text-transform: lowercase;
+    }
+
+    .readme ul,
+    .notes ol {
+      margin: 0;
+      padding-left: 1.25rem;
+    }
+
+    .readme a,
+    .notes a {
+      color: var(--accent);
+    }
+
+    code {
+      color: var(--fg);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 0.95em;
+    }
+
+    .notes {
+      margin-top: 24px;
+      border-top: 1px solid var(--line);
+      padding-top: 16px;
+    }
+
+    .notes h2 {
+      margin-bottom: 8px;
+      font-size: 1rem;
+    }
+
+    .doc-callout {
+      display: grid;
+      gap: 4px;
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
+    }
+
+    .doc-callout strong {
+      font-weight: 500;
+      text-transform: lowercase;
+    }
+
+    @media (max-width: 880px) {
+      header,
+      .work {
+        grid-template-columns: 1fr;
+      }
+
+      #grid {
+        --cell: 17px;
+      }
+    }
+
+    @media (max-width: 620px) {
+      main {
+        width: min(100vw - 20px, 1120px);
+        padding-top: 18px;
+      }
+
+      .top-actions,
+      .controls {
+        display: grid;
+      }
+
+      button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>grid direct instruments</h1>
+        <p>16 x 8 monome grid, direct Web Serial, browser-native WebAudio.</p>
+      </div>
+      <div class="top-actions">
+        <button id="connect" type="button">Connect grid</button>
+        <button id="audio" class="secondary" type="button">Enable audio</button>
+        <button id="mic" class="secondary" type="button">Enable mic</button>
+        <button id="load-sample" class="secondary" type="button">Load sample</button>
+        <input id="sample-file" type="file" accept="audio/*" hidden>
+      </div>
+    </header>
+
+    <section class="tempo" aria-label="master tempo">
+      <label class="param">
+        <span>bpm</span>
+        <input id="master-bpm" type="range" min="40" max="220" step="1" value="120">
+        <span id="master-bpm-value">120</span>
+      </label>
+    </section>
+
+    <nav id="tabs" class="tabs" aria-label="instrument launcher"></nav>
+
+    <div class="controls">
+      <button id="randomize" class="secondary" type="button">Randomize</button>
+      <button id="reset" class="secondary" type="button">Reset app</button>
+      <button id="clear" class="secondary" type="button" disabled>Clear LEDs</button>
+      <button id="disconnect" class="secondary" type="button" disabled>Disconnect</button>
+      <div id="status" role="status">Waiting for a grid.</div>
+    </div>
+
+    <section class="work">
+      <div class="grid-wrap">
+        <div id="grid" aria-label="monome grid surface"></div>
+      </div>
+
+      <section id="synth-panel" class="engine-panel" aria-label="fixed synth engine">
+        <h2>synth</h2>
+        <label class="param param-select">
+          <span>wave</span>
+          <select id="synth-wave">
+            <option value="square">square</option>
+            <option value="sawtooth">saw</option>
+            <option value="triangle">tri</option>
+            <option value="sine">sine</option>
+          </select>
+        </label>
+        <label class="param">
+          <span>attack</span>
+          <input id="synth-attack" type="range" min="0.003" max="0.6" step="0.001" value="0.012">
+          <span id="synth-attack-value">12ms</span>
+        </label>
+        <label class="param">
+          <span>decay</span>
+          <input id="synth-decay" type="range" min="0.04" max="1.6" step="0.01" value="0.20">
+          <span id="synth-decay-value">200ms</span>
+        </label>
+        <label class="param">
+          <span>lowpass</span>
+          <input id="synth-filter" type="range" min="220" max="12000" step="10" value="2600">
+          <span id="synth-filter-value">2.6k</span>
+        </label>
+        <label class="param">
+          <span>q</span>
+          <input id="synth-q" type="range" min="0.1" max="12" step="0.1" value="0.8">
+          <span id="synth-q-value">0.8</span>
+        </label>
+        <label class="param">
+          <span>drive</span>
+          <input id="synth-drive" type="range" min="1" max="8" step="0.1" value="1.4">
+          <span id="synth-drive-value">1.4</span>
+        </label>
+        <label class="param">
+          <span>level</span>
+          <input id="synth-level" type="range" min="0.15" max="0.9" step="0.01" value="0.55">
+          <span id="synth-level-value">55</span>
+        </label>
+      </section>
+
+      <section id="sample-panel" class="engine-panel" aria-label="sample engine" hidden>
+        <h2>sample</h2>
+        <div class="panel-actions">
+          <button id="panel-load-sample" class="secondary" type="button">Load sample</button>
+          <button id="panel-record" class="secondary" type="button">Record</button>
+        </div>
+        <div class="sample-meta">
+          <p><strong id="sample-name">default djembe loop</strong></p>
+          <p id="sample-detail">loading bundled CC0 drum pattern</p>
+          <p>row 8 key 1 records. loaded and recorded samples are loudened.</p>
+        </div>
+      </section>
+
+      <aside class="readme" aria-label="current app readme">
+        <h2 id="app-title">Loading...</h2>
+        <p id="app-summary"></p>
+        <ul id="app-help"></ul>
+        <p id="app-source"></p>
+      </aside>
+    </section>
+
+    <section class="notes" aria-label="local hosting instructions">
+      <h2>macOS local hosting</h2>
+      <ol>
+        <li>Use Chrome or Edge. Safari and Firefox do not currently expose the Web Serial API used here.</li>
+        <li>From this folder, run <code>python3 -m http.server 8000</code>.</li>
+        <li>Open <code>http://localhost:8000/</code>, connect the grid over USB, then press <code>Connect grid</code>.</li>
+        <li>If serialosc is installed and holding the port, stop it first with <code>brew services stop serialosc</code>.</li>
+        <li>After using this page, restart serialosc with <code>brew services start serialosc</code> if you want normal monome apps to see the grid again.</li>
+      </ol>
+      <div class="doc-callout">
+        <strong>building your own grid web app</strong>
+        <p><a href="direct-web-serial.html">direct web serial grid documentation</a> includes the tiny library and hello-world example.</p>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { MonomeGridSerial } from "./grid-serial.js";
+
+    const DEFAULT_COLS = 16;
+    const DEFAULT_ROWS = 8;
+    const MAX_LEVEL = 15;
+
+    const els = {
+      connect: document.querySelector("#connect"),
+      disconnect: document.querySelector("#disconnect"),
+      clear: document.querySelector("#clear"),
+      audio: document.querySelector("#audio"),
+      mic: document.querySelector("#mic"),
+      loadSample: document.querySelector("#load-sample"),
+      sampleFile: document.querySelector("#sample-file"),
+      randomize: document.querySelector("#randomize"),
+      reset: document.querySelector("#reset"),
+      tabs: document.querySelector("#tabs"),
+      grid: document.querySelector("#grid"),
+      status: document.querySelector("#status"),
+      title: document.querySelector("#app-title"),
+      summary: document.querySelector("#app-summary"),
+      help: document.querySelector("#app-help"),
+      source: document.querySelector("#app-source"),
+      bpm: document.querySelector("#master-bpm"),
+      bpmValue: document.querySelector("#master-bpm-value"),
+      synthPanel: document.querySelector("#synth-panel"),
+      samplePanel: document.querySelector("#sample-panel"),
+      panelLoadSample: document.querySelector("#panel-load-sample"),
+      panelRecord: document.querySelector("#panel-record"),
+      sampleName: document.querySelector("#sample-name"),
+      sampleDetail: document.querySelector("#sample-detail"),
+      synth: {
+        wave: document.querySelector("#synth-wave"),
+        attack: document.querySelector("#synth-attack"),
+        decay: document.querySelector("#synth-decay"),
+        filter: document.querySelector("#synth-filter"),
+        q: document.querySelector("#synth-q"),
+        drive: document.querySelector("#synth-drive"),
+        level: document.querySelector("#synth-level"),
+        attackValue: document.querySelector("#synth-attack-value"),
+        decayValue: document.querySelector("#synth-decay-value"),
+        filterValue: document.querySelector("#synth-filter-value"),
+        qValue: document.querySelector("#synth-q-value"),
+        driveValue: document.querySelector("#synth-drive-value"),
+        levelValue: document.querySelector("#synth-level-value")
+      }
+    };
+
+    const state = {
+      cols: DEFAULT_COLS,
+      rows: DEFAULT_ROWS,
+      gotSizeReport: false,
+      appKey: "splice",
+      app: null,
+      pointerDown: null,
+      bpm: 120
+    };
+
+    const gridSerial = new MonomeGridSerial({
+      cols: DEFAULT_COLS,
+      rows: DEFAULT_ROWS,
+      mapLevel: hardwareLevel,
+      onSize: handleGridSize,
+      onKey: handleGridKey,
+      onStatus: (message) => {
+        if (message === "disconnected") return;
+        setStatus(message);
+      }
+    });
+
+    class AudioEngine {
+      constructor() {
+        this.ctx = null;
+        this.master = null;
+        this.delay = null;
+        this.delayFeedback = null;
+        this.synth = {
+          wave: "square",
+          attack: 0.012,
+          decay: 0.2,
+          filter: 2600,
+          q: 0.8,
+          drive: 1.4,
+          level: 0.55
+        };
+      }
+
+      async setup(resume = true) {
+        if (!this.ctx) {
+          this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+          this.master = this.ctx.createGain();
+          this.master.gain.value = this.synth.level;
+          this.delay = this.ctx.createDelay(1.2);
+          this.delay.delayTime.value = 0.22;
+          this.delayFeedback = this.ctx.createGain();
+          this.delayFeedback.gain.value = 0.24;
+          this.delay.connect(this.delayFeedback);
+          this.delayFeedback.connect(this.delay);
+          this.delay.connect(this.master);
+          this.master.connect(this.ctx.destination);
+        }
+
+        if (resume && this.ctx.state !== "running") {
+          await this.ctx.resume();
+        }
+
+        if (resume) els.audio.textContent = "Audio on";
+      }
+
+      async ensure() {
+        await this.setup(true);
+      }
+
+      async prepare() {
+        await this.setup(false);
+      }
+
+      midi(note) {
+        return 440 * Math.pow(2, (note - 69) / 12);
+      }
+
+      setSynthParam(key, value) {
+        if (key === "wave") this.synth.wave = value;
+        else this.synth[key] = Number(value);
+        if (key === "level" && this.master) this.master.gain.setTargetAtTime(this.synth.level, this.ctx.currentTime, 0.02);
+        updateSynthReadout();
+      }
+
+      driveCurve(drive) {
+        const curve = new Float32Array(512);
+        const fold = clamp((drive - 1) / 7, 0, 1);
+        for (let i = 0; i < curve.length; i += 1) {
+          const x = (i / (curve.length - 1)) * 2 - 1;
+          const folded = x + Math.sin(x * Math.PI * 2) * fold * 0.22;
+          const clipped = Math.tanh(folded * (1.2 + drive * 0.85));
+          const asym = folded * folded * Math.sign(folded) * fold * 0.18;
+          curve[i] = clamp((clipped + asym) * (0.82 + fold * 0.22), -1, 1);
+        }
+        return curve;
+      }
+
+      tone(freq, dur = 0.16, type = "sine", amp = 0.18, pan = 0, send = 0, mod = {}) {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const filter = this.ctx.createBiquadFilter();
+        const shaper = this.ctx.createWaveShaper();
+        const preDrive = this.ctx.createGain();
+        const postDrive = this.ctx.createGain();
+        const gain = this.ctx.createGain();
+        const panner = this.ctx.createStereoPanner();
+        const attack = Math.max(0.003, this.synth.attack * (mod.attackMul || 1));
+        const decay = Math.max(0.025, dur * (mod.decayMul || 1), this.synth.decay * (mod.decayMul || 1));
+        const drive = Math.max(1, this.synth.drive * (mod.driveMul || 1));
+        const drivePush = 1 + (drive - 1) * 0.28;
+        const filterHz = clamp((mod.filterHz || this.synth.filter) * (mod.filterMul || 1) * drivePush, 80, 18000);
+
+        osc.type = mod.wave || this.synth.wave || type;
+        osc.frequency.setValueAtTime(freq, now);
+        filter.type = "lowpass";
+        filter.frequency.setValueAtTime(filterHz, now);
+        filter.Q.value = this.synth.q * (mod.qMul || 1) * (1 + (drive - 1) * 0.06);
+        preDrive.gain.value = 0.75 + drive * 0.35;
+        shaper.curve = this.driveCurve(drive);
+        shaper.oversample = "2x";
+        postDrive.gain.value = 0.78 + Math.min(0.75, (drive - 1) * 0.13);
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, amp * (mod.ampMul || 1) * (1 + (drive - 1) * 0.06)), now + attack);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + decay);
+        panner.pan.value = pan;
+
+        osc.connect(preDrive);
+        preDrive.connect(shaper);
+        shaper.connect(postDrive);
+        postDrive.connect(filter);
+        filter.connect(gain);
+        gain.connect(panner);
+        panner.connect(this.master);
+        if (send > 0) {
+          const wet = this.ctx.createGain();
+          wet.gain.value = send;
+          panner.connect(wet);
+          wet.connect(this.delay);
+        }
+        osc.start(now);
+        osc.stop(now + decay + 0.03);
+      }
+
+      voice(note, dur = 0.22, amp = 0.13, pan = 0) {
+        this.tone(this.midi(note), dur, this.synth.wave, amp, pan, 0, { filterMul: 1.25 });
+        this.tone(this.midi(note + 7) * 0.5, dur * 0.92, this.synth.wave, amp * 0.45, pan * -0.5, 0, { filterMul: 0.85, decayMul: 0.9 });
+      }
+
+      pluck(note, dur = 0.18, amp = 0.2, wave = "square", send = 0, mod = {}) {
+        this.tone(this.midi(note), dur, wave, amp, Math.random() * 0.25 - 0.125, send, mod);
+      }
+
+      chord(notes, dur = 1.2, amp = 0.075) {
+        notes.forEach((note, index) => {
+          this.tone(this.midi(note), dur + index * 0.08, this.synth.wave, amp, (index - 1) * 0.22, 0, { filterMul: 1 + index * 0.08, decayMul: 1.35 });
+        });
+      }
+
+      pad(notes, dur = 2.2, amp = 0.055, send = 0) {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        notes.forEach((note, index) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          const filter = this.ctx.createBiquadFilter();
+          const panner = this.ctx.createStereoPanner();
+          osc.type = this.synth.wave;
+          osc.frequency.setValueAtTime(this.midi(note) * (1 + (index - 1.5) * 0.0015), now);
+          filter.type = "lowpass";
+          filter.frequency.value = clamp(this.synth.filter * (0.7 + index * 0.08), 120, 15000);
+          filter.Q.value = this.synth.q;
+          gain.gain.setValueAtTime(0.0001, now);
+          gain.gain.linearRampToValueAtTime(amp, now + Math.max(0.02, this.synth.attack * 4));
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + Math.max(dur, this.synth.decay * 3));
+          panner.pan.value = (index - (notes.length - 1) / 2) * 0.18;
+          osc.connect(filter);
+          filter.connect(gain);
+          gain.connect(panner);
+          panner.connect(this.master);
+          if (send > 0) {
+            const wet = this.ctx.createGain();
+            wet.gain.value = send;
+            panner.connect(wet);
+            wet.connect(this.delay);
+          }
+          osc.start(now);
+          osc.stop(now + Math.max(dur, this.synth.decay * 3) + 0.05);
+        });
+      }
+
+      bass(note, dur = 0.28, amp = 0.22) {
+        this.tone(this.midi(note), dur, "sawtooth", amp, -0.08, 0);
+        this.tone(this.midi(note - 12), dur * 0.85, "sine", amp * 0.55, 0.08, 0);
+      }
+
+      bloom(root = 48, energy = 0.5) {
+        this.pad([root, root + 7, root + 12, root + 16, root + 21], 1.9 + energy * 1.1, 0.045 + energy * 0.035, 0);
+        this.noiseBurst(0.35 + energy * 0.2, 0.025 + energy * 0.035, 0);
+      }
+
+      kick() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(110, now);
+        osc.frequency.exponentialRampToValueAtTime(42, now + 0.13);
+        gain.gain.setValueAtTime(0.5, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+        osc.connect(gain);
+        gain.connect(this.master);
+        osc.start(now);
+        osc.stop(now + 0.2);
+      }
+
+      hat(amp = 0.09) {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const buffer = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.05, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < data.length; i += 1) data[i] = Math.random() * 2 - 1;
+        const noise = this.ctx.createBufferSource();
+        const filter = this.ctx.createBiquadFilter();
+        const gain = this.ctx.createGain();
+        noise.buffer = buffer;
+        filter.type = "highpass";
+        filter.frequency.value = 5500;
+        gain.gain.setValueAtTime(amp, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.045);
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.master);
+        noise.start(now);
+      }
+
+      noiseBurst(dur = 0.22, amp = 0.08, pan = 0) {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const buffer = this.ctx.createBuffer(1, this.ctx.sampleRate * dur, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < data.length; i += 1) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+        const noise = this.ctx.createBufferSource();
+        const filter = this.ctx.createBiquadFilter();
+        const gain = this.ctx.createGain();
+        const panner = this.ctx.createStereoPanner();
+        noise.buffer = buffer;
+        filter.type = "bandpass";
+        filter.frequency.value = 900 + Math.random() * 2400;
+        filter.Q.value = 0.8;
+        gain.gain.setValueAtTime(amp, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+        panner.pan.value = pan;
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(panner);
+        panner.connect(this.master);
+        noise.start(now);
+      }
+
+      dub(note = 45, intensity = 0.7) {
+        this.tone(this.midi(note), 0.12, "triangle", 0.08 + intensity * 0.06, -0.35, 0.85);
+        this.tone(this.midi(note + 12), 0.08, "sine", 0.045 + intensity * 0.035, 0.35, 0.9);
+      }
+
+      crush(note = 57, intensity = 0.7) {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const shaper = this.ctx.createWaveShaper();
+        const gain = this.ctx.createGain();
+        const curve = new Float32Array(256);
+        for (let i = 0; i < curve.length; i += 1) {
+          const x = (i / 128) - 1;
+          curve[i] = Math.sign(x) * Math.pow(Math.abs(x), 0.35);
+        }
+        osc.type = "square";
+        osc.frequency.setValueAtTime(this.midi(note), now);
+        shaper.curve = curve;
+        gain.gain.setValueAtTime(0.07 + intensity * 0.08, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.09 + intensity * 0.06);
+        osc.connect(shaper);
+        shaper.connect(gain);
+        gain.connect(this.master);
+        osc.start(now);
+        osc.stop(now + 0.18);
+      }
+
+      sample(buffer, start = 0, dur = 0.25, rate = 1, amp = 0.35, pan = 0, filterHz = 14000) {
+        if (!this.ctx || !buffer) return;
+        const now = this.ctx.currentTime;
+        const source = this.ctx.createBufferSource();
+        const gain = this.ctx.createGain();
+        const panner = this.ctx.createStereoPanner();
+        const filter = this.ctx.createBiquadFilter();
+        const safeDur = clamp(dur, 0.03, Math.max(0.03, buffer.duration - start));
+        source.buffer = buffer;
+        source.playbackRate.value = Math.max(0.05, Math.abs(rate));
+        filter.type = "lowpass";
+        filter.frequency.value = filterHz;
+        filter.Q.value = 0.7;
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.linearRampToValueAtTime(amp, now + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + safeDur / Math.max(0.05, Math.abs(rate)));
+        panner.pan.value = pan;
+        source.connect(filter);
+        filter.connect(gain);
+        gain.connect(panner);
+        panner.connect(this.master);
+        source.start(now, clamp(start, 0, Math.max(0, buffer.duration - 0.02)), safeDur);
+      }
+
+      panic() {
+        if (this.master) {
+          this.master.gain.cancelScheduledValues(this.ctx.currentTime);
+          this.master.gain.setValueAtTime(0.55, this.ctx.currentTime);
+        }
+      }
+    }
+
+    const audio = new AudioEngine();
+
+    class SampleBank {
+      constructor() {
+        this.stream = null;
+        this.recorder = null;
+        this.chunks = [];
+        this.buffer = null;
+        this.reverseBuffer = null;
+        this.isRecording = false;
+        this.isStopping = false;
+        this.recordStartedAt = 0;
+        this.lastToggleAt = 0;
+        this.defaultLoaded = false;
+        this.sourceName = "default djembe loop";
+      }
+
+      async ensureMic() {
+        await audio.ensure();
+        if (!navigator.mediaDevices?.getUserMedia) {
+          setStatus("Microphone capture is unavailable in this browser.", true);
+          return false;
+        }
+        if (typeof MediaRecorder === "undefined") {
+          setStatus("MediaRecorder is unavailable in this browser.", true);
+          return false;
+        }
+        if (!this.stream) {
+          try {
+            this.stream = await navigator.mediaDevices.getUserMedia({
+              audio: {
+                echoCancellation: false,
+                noiseSuppression: false,
+                autoGainControl: false
+              }
+            });
+          } catch (error) {
+            setStatus(`Microphone unavailable: ${error.message}`, true);
+            this.updateUi();
+            return false;
+          }
+        }
+        this.updateUi();
+        setStatus("Mic enabled. Sample apps can record from row 8 key 1.");
+        return true;
+      }
+
+      updateUi() {
+        const active = this.isRecording || this.isStopping;
+        els.mic.classList.toggle("recording", active);
+        els.panelRecord.classList.toggle("recording", active);
+        els.status.classList.toggle("recording", active);
+        if (this.isRecording) els.mic.textContent = "REC recording";
+        else if (this.isStopping) els.mic.textContent = "REC saving";
+        else els.mic.textContent = this.stream ? "Mic on" : "Enable mic";
+        if (this.isRecording) els.panelRecord.textContent = "REC recording";
+        else if (this.isStopping) els.panelRecord.textContent = "REC saving";
+        else els.panelRecord.textContent = "Record";
+        this.updateSampleUi();
+      }
+
+      updateSampleUi() {
+        if (!els.sampleName) return;
+        els.sampleName.textContent = this.sourceName || "synthetic fallback";
+        if (this.isRecording) els.sampleDetail.textContent = "recording: press again to stop and save";
+        else if (this.isStopping) els.sampleDetail.textContent = "saving and loudening recording";
+        else if (this.buffer) els.sampleDetail.textContent = `${this.buffer.duration.toFixed(2)}s loaded, loudness processed`;
+        else els.sampleDetail.textContent = "synthetic fallback until a sample loads";
+      }
+
+      paintRecordIndicator(levels) {
+        if (!this.isRecording && !this.isStopping) return false;
+        const row = state.rows - 1;
+        const pulse = Math.floor(Date.now() / 160) % 2;
+        for (let x = 0; x < state.cols; x += 1) {
+          levels[row][x] = this.isStopping ? (x % 2 === pulse ? 12 : 5) : (x % 2 === pulse ? 15 : 7);
+        }
+        levels[row][0] = 15;
+        return true;
+      }
+
+      fallbackBuffer() {
+        if (!audio.ctx) return null;
+        const length = Math.floor(audio.ctx.sampleRate * 1.6);
+        const buffer = audio.ctx.createBuffer(1, length, audio.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < length; i += 1) {
+          const t = i / audio.ctx.sampleRate;
+          const env = Math.min(1, t * 8) * Math.max(0, 1 - t / 1.6);
+          data[i] = env * (Math.sin(t * Math.PI * 2 * 110) * 0.55 + Math.sin(t * Math.PI * 2 * 165) * 0.25 + (Math.random() * 2 - 1) * 0.035);
+        }
+        return buffer;
+      }
+
+      activeBuffer(reverse = false) {
+        if (!this.buffer) {
+          this.buffer = this.fallbackBuffer();
+          this.reverseBuffer = this.makeReverse(this.buffer);
+        }
+        return reverse ? this.reverseBuffer : this.buffer;
+      }
+
+      makeReverse(buffer) {
+        if (!audio.ctx || !buffer) return null;
+        const reversed = audio.ctx.createBuffer(buffer.numberOfChannels, buffer.length, buffer.sampleRate);
+        for (let ch = 0; ch < buffer.numberOfChannels; ch += 1) {
+          const src = buffer.getChannelData(ch);
+          const dst = reversed.getChannelData(ch);
+          for (let i = 0; i < src.length; i += 1) dst[i] = src[src.length - 1 - i];
+        }
+        return reversed;
+      }
+
+      loudBuffer(buffer) {
+        if (!audio.ctx || !buffer) return buffer;
+        const cooked = audio.ctx.createBuffer(buffer.numberOfChannels, buffer.length, buffer.sampleRate);
+        let peak = 0;
+        let rms = 0;
+        let count = 0;
+
+        for (let ch = 0; ch < buffer.numberOfChannels; ch += 1) {
+          const src = buffer.getChannelData(ch);
+          let dc = 0;
+          for (let i = 0; i < src.length; i += 1) dc += src[i];
+          dc /= Math.max(1, src.length);
+
+          for (let i = 0; i < src.length; i += 1) {
+            const sample = src[i] - dc;
+            peak = Math.max(peak, Math.abs(sample));
+            rms += sample * sample;
+            count += 1;
+          }
+        }
+
+        rms = Math.sqrt(rms / Math.max(1, count));
+        const targetRms = 0.32;
+        const inputGain = Math.min(24, Math.max(1, targetRms / Math.max(0.0001, rms)));
+        const drive = peak < 0.02 ? 3.2 : 2.35;
+        let cookedPeak = 0;
+
+        for (let ch = 0; ch < buffer.numberOfChannels; ch += 1) {
+          const src = buffer.getChannelData(ch);
+          const dst = cooked.getChannelData(ch);
+          let dc = 0;
+          for (let i = 0; i < src.length; i += 1) dc += src[i];
+          dc /= Math.max(1, src.length);
+
+          for (let i = 0; i < src.length; i += 1) {
+            const envIn = src[i] - dc;
+            const compressed = Math.tanh(envIn * inputGain * drive) / Math.tanh(drive);
+            dst[i] = compressed;
+            cookedPeak = Math.max(cookedPeak, Math.abs(compressed));
+          }
+        }
+
+        const finalGain = Math.min(1.8, 0.98 / Math.max(0.0001, cookedPeak));
+        for (let ch = 0; ch < cooked.numberOfChannels; ch += 1) {
+          const dst = cooked.getChannelData(ch);
+          for (let i = 0; i < dst.length; i += 1) dst[i] *= finalGain;
+        }
+
+        return cooked;
+      }
+
+      async loadFile(file) {
+        if (!file) return;
+        await audio.ensure();
+        try {
+          setStatus(`Loading sample: ${file.name}`);
+          const arrayBuffer = await file.arrayBuffer();
+          const decodedBuffer = await audio.ctx.decodeAudioData(arrayBuffer);
+          if (decodedBuffer.duration < 0.08) throw new Error("sample was too short");
+          this.buffer = this.loudBuffer(decodedBuffer);
+          this.reverseBuffer = this.makeReverse(this.buffer);
+          this.sourceName = file.name;
+          this.updateSampleUi();
+          setStatus(`Loaded and loudened ${this.buffer.duration.toFixed(2)}s sample: ${file.name}`);
+          state.app?.draw();
+        } catch (error) {
+          setStatus(`Sample load failed: ${error.message}`, true);
+        }
+      }
+
+      async loadDefault() {
+        if (this.buffer || this.defaultLoaded) return;
+        try {
+          await audio.prepare();
+          const response = await fetch("assets/default-sample.ogg");
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const arrayBuffer = await response.arrayBuffer();
+          const decodedBuffer = await audio.ctx.decodeAudioData(arrayBuffer);
+          this.buffer = this.loudBuffer(decodedBuffer);
+          this.reverseBuffer = this.makeReverse(this.buffer);
+          this.defaultLoaded = true;
+          this.sourceName = "default djembe loop";
+          this.updateSampleUi();
+          setStatus(`Default drum loop loaded (${this.buffer.duration.toFixed(2)}s).`);
+          state.app?.draw();
+        } catch (error) {
+          setStatus(`Default sample could not load: ${error.message}`, true);
+        }
+      }
+
+      async toggleRecord() {
+        const now = window.performance?.now?.() ?? Date.now();
+        if (now - this.lastToggleAt < 350) return;
+        this.lastToggleAt = now;
+        if (this.isStopping) return;
+        if (this.isRecording) return this.stopRecord();
+        return this.startRecord();
+      }
+
+      async startRecord() {
+        const ok = await this.ensureMic();
+        if (!ok || this.isRecording || this.isStopping) return;
+        this.chunks = [];
+        try {
+          this.recorder = new MediaRecorder(this.stream);
+          this.recorder.addEventListener("dataavailable", (event) => {
+            if (event.data.size) this.chunks.push(event.data);
+          });
+          this.recorder.start(100);
+          this.isRecording = true;
+          this.recordStartedAt = Date.now();
+          this.updateUi();
+          setStatus("REC on: row 8 key 1 stops and saves. This is latch record, not hold record.");
+          state.app?.draw();
+        } catch (error) {
+          this.recorder = null;
+          this.isRecording = false;
+          this.isStopping = false;
+          this.updateUi();
+          setStatus(`Recording failed to start: ${error.message}`, true);
+        }
+      }
+
+      async stopRecord() {
+        if (!this.recorder || !this.isRecording || this.isStopping) return;
+        const recorder = this.recorder;
+        this.isRecording = false;
+        this.isStopping = true;
+        this.updateUi();
+        setStatus("REC saving: decoding the captured sample.");
+        state.app?.draw();
+        const done = new Promise((resolve) => {
+          recorder.addEventListener("stop", resolve, { once: true });
+        });
+        let finalMessage = "Recording finished.";
+        let finalWarning = false;
+        try {
+          if (recorder.state === "recording" && typeof recorder.requestData === "function") recorder.requestData();
+          if (recorder.state !== "inactive") {
+            recorder.stop();
+            await done;
+          }
+          if (!this.chunks.length) throw new Error("no audio chunks received");
+          const blob = new Blob(this.chunks, { type: recorder.mimeType || "audio/webm" });
+          const arrayBuffer = await blob.arrayBuffer();
+          const decodedBuffer = await audio.ctx.decodeAudioData(arrayBuffer);
+          if (decodedBuffer.duration < 0.08) throw new Error("recording was too short");
+          this.buffer = this.loudBuffer(decodedBuffer);
+          this.reverseBuffer = this.makeReverse(this.buffer);
+          this.sourceName = "mic recording";
+          const elapsed = Math.max(0, (Date.now() - this.recordStartedAt) / 1000);
+          finalMessage = `Captured and loudened ${this.buffer.duration.toFixed(2)}s sample from ${elapsed.toFixed(1)}s REC.`;
+        } catch (error) {
+          finalMessage = `Recording was not saved: ${error.message}. Previous sample kept.`;
+          finalWarning = true;
+        } finally {
+          this.recorder = null;
+          this.chunks = [];
+          this.isStopping = false;
+          this.updateUi();
+          state.app?.draw();
+          setStatus(finalMessage, finalWarning);
+        }
+      }
+
+      playSlice(index, slices = 16, rate = 1, amp = 0.35, reverse = false, pan = 0, span = 1, filterHz = 14000) {
+        const buffer = this.activeBuffer(reverse);
+        if (!buffer) return;
+        const sliceDur = buffer.duration / slices;
+        const dur = sliceDur * span;
+        const originalStart = clamp(index, 0, slices - 1) * sliceDur;
+        const start = reverse ? Math.max(0, buffer.duration - originalStart - dur) : originalStart;
+        audio.sample(buffer, start, dur, rate, amp, pan, filterHz);
+      }
+    }
+
+    const samples = new SampleBank();
+
+    function clamp(v, min, max) {
+      return Math.max(min, Math.min(max, v));
+    }
+
+    function wrap(v, max) {
+      return ((v % max) + max) % max;
+    }
+
+    function sleep(ms) {
+      return new Promise((resolve) => window.setTimeout(resolve, ms));
+    }
+
+    function beatMs(subdivision = 4) {
+      return (60000 / state.bpm) / subdivision;
+    }
+
+    function setTimer(app, subdivision, fn = () => app.tick()) {
+      window.clearInterval(app.timer);
+      app.timerSubdivision = subdivision;
+      app.timer = window.setInterval(fn, beatMs(subdivision));
+    }
+
+    function updateBpm(value) {
+      state.bpm = Number(value);
+      els.bpm.value = state.bpm;
+      els.bpmValue.textContent = String(state.bpm);
+      if (state.app?.timerSubdivision) setTimer(state.app, state.app.timerSubdivision);
+    }
+
+    function keyFor(x, y) {
+      return `${x},${y}`;
+    }
+
+    function maybeShapeSynthFromGrid(x, y, pressed) {
+      if (!pressed || state.appKey === "splice" || state.appKey === "undertow") return;
+      if (!audio.ctx) return;
+      const xNorm = x / Math.max(1, state.cols - 1);
+      const yNorm = y / Math.max(1, state.rows - 1);
+      audio.setSynthParam("filter", Math.round(420 + xNorm * 9200));
+      if (y < state.rows - 1) audio.setSynthParam("decay", (0.06 + yNorm * 0.95).toFixed(2));
+    }
+
+    function setStatus(message, warning = false) {
+      els.status.textContent = message;
+      els.status.classList.toggle("warning", warning);
+    }
+
+    function formatMs(seconds) {
+      return `${Math.round(seconds * 1000)}ms`;
+    }
+
+    function formatHz(hz) {
+      return hz >= 1000 ? `${(hz / 1000).toFixed(1)}k` : `${Math.round(hz)}`;
+    }
+
+    function updateSynthReadout() {
+      const s = audio.synth;
+      if (!els.synth.wave) return;
+      els.synth.wave.value = s.wave;
+      els.synth.attack.value = s.attack;
+      els.synth.decay.value = s.decay;
+      els.synth.filter.value = s.filter;
+      els.synth.q.value = s.q;
+      els.synth.drive.value = s.drive;
+      els.synth.level.value = s.level;
+      els.synth.attackValue.textContent = formatMs(s.attack);
+      els.synth.decayValue.textContent = formatMs(s.decay);
+      els.synth.filterValue.textContent = formatHz(s.filter);
+      els.synth.qValue.textContent = s.q.toFixed(1);
+      els.synth.driveValue.textContent = s.drive.toFixed(1);
+      els.synth.levelValue.textContent = Math.round(s.level * 100);
+    }
+
+    function bindSynthControls() {
+      const controls = [
+        ["wave", els.synth.wave],
+        ["attack", els.synth.attack],
+        ["decay", els.synth.decay],
+        ["filter", els.synth.filter],
+        ["q", els.synth.q],
+        ["drive", els.synth.drive],
+        ["level", els.synth.level]
+      ];
+      controls.forEach(([key, control]) => {
+        control.addEventListener("input", () => audio.setSynthParam(key, control.value));
+      });
+      updateSynthReadout();
+    }
+
+    function makeLevels(fill = 0) {
+      return Array.from({ length: state.rows }, () => Array(state.cols).fill(fill));
+    }
+
+    function renderGrid(cols = state.cols, rows = state.rows) {
+      state.cols = cols;
+      state.rows = rows;
+      els.grid.style.setProperty("--cols", cols);
+      els.grid.style.setProperty("--rows", rows);
+      els.grid.replaceChildren();
+
+      for (let y = 0; y < rows; y += 1) {
+        for (let x = 0; x < cols; x += 1) {
+          const cell = document.createElement("button");
+          cell.type = "button";
+          cell.className = "cell";
+          cell.dataset.x = String(x);
+          cell.dataset.y = String(y);
+          cell.dataset.level = "0";
+          cell.dataset.label = `${x},${y}`;
+          cell.setAttribute("aria-label", `grid key ${x}, ${y}`);
+          els.grid.appendChild(cell);
+        }
+      }
+    }
+
+    function paintLevels(levels) {
+      for (const cell of els.grid.children) {
+        const x = Number(cell.dataset.x);
+        const y = Number(cell.dataset.y);
+        const level = clamp(Math.round(levels[y]?.[x] ?? 0), 0, MAX_LEVEL);
+        cell.dataset.level = String(level);
+      }
+    }
+
+    function hardwareLevel(level) {
+      const v = clamp(Math.round(level), 0, MAX_LEVEL);
+      if (v <= 0) return 0;
+      if (v >= 15) return 15;
+      if (v >= 14) return 8;
+      if (v >= 13) return 6;
+      if (v >= 11) return 4;
+      if (v >= 8) return 2;
+      if (v >= 5) return 1;
+      return 0;
+    }
+
+    async function drawFrame(levels) {
+      paintLevels(levels);
+      gridSerial.drawQueued(levels);
+    }
+
+    async function clearHardware() {
+      paintLevels(makeLevels(0));
+      try {
+        await gridSerial.clear();
+      } catch (error) {
+        console.warn(error);
+        setStatus(`LED clear error: ${error.message}`, true);
+      }
+    }
+
+    class GridApp {
+      constructor(spec) {
+        this.spec = spec;
+        this.timer = null;
+      }
+
+      start() {
+        this.reset();
+        this.draw();
+      }
+
+      stop() {
+        window.clearInterval(this.timer);
+        this.timer = null;
+      }
+
+      reset() {}
+      randomize() {}
+      key() {}
+
+      draw(levels = makeLevels(0)) {
+        drawFrame(levels);
+      }
+    }
+
+    class StudiesSequencer extends GridApp {
+      reset() {
+        this.playRows = Math.max(1, state.rows - 2);
+        this.steps = Array.from({ length: this.playRows }, () => Array(state.cols).fill(0));
+        this.pos = 0;
+        this.loopStart = 0;
+        this.loopEnd = state.cols - 1;
+        this.bottomHeld = new Set();
+        this.notes = [48, 50, 53, 55, 57, 60, 62, 65, 67, 69, 72, 74, 77, 79];
+        setTimer(this, 4);
+      }
+
+      randomize() {
+        this.steps.forEach((row, y) => row.forEach((_, x) => {
+          row[x] = Math.random() < (0.12 + y * 0.015) ? 1 : 0;
+        }));
+        this.draw();
+      }
+
+      key(x, y, s) {
+        if (!s) {
+          if (y === state.rows - 1) this.bottomHeld.delete(x);
+          return;
+        }
+        if (y < this.playRows) {
+          this.steps[y][x] ^= 1;
+        } else if (y === state.rows - 1) {
+          if (this.bottomHeld.size > 0) {
+            const first = [...this.bottomHeld][0];
+            this.loopStart = Math.min(first, x);
+            this.loopEnd = Math.max(first, x);
+          }
+          this.bottomHeld.add(x);
+          this.pos = x;
+        }
+        this.draw();
+      }
+
+      tick() {
+        this.pos = this.pos >= this.loopEnd ? this.loopStart : this.pos + 1;
+        let triggered = 0;
+        for (let y = 0; y < this.playRows; y += 1) {
+          if (this.steps[y][this.pos]) {
+            triggered += 1;
+            const noteIndex = this.playRows - 1 - y;
+            audio.pluck(this.notes[noteIndex % this.notes.length], 0.14, 0.14 + y * 0.008, y % 2 ? "triangle" : "square");
+          }
+        }
+        if (triggered > 0 && this.pos % 4 === 0) audio.kick();
+        this.draw();
+      }
+
+      draw() {
+        const levels = makeLevels(0);
+        for (let y = 0; y < this.playRows; y += 1) {
+          for (let x = 0; x < state.cols; x += 1) {
+            if (this.steps[y][x]) levels[y][x] = x === this.pos ? 15 : 8;
+            else if (x === this.pos) levels[y][x] = 3;
+          }
+        }
+        const activity = state.rows - 2;
+        for (let x = this.loopStart; x <= this.loopEnd; x += 1) levels[state.rows - 1][x] = 4;
+        for (let y = 0; y < this.playRows; y += 1) {
+          if (this.steps[y][this.pos]) levels[activity][y] = 15;
+          else levels[activity][y] = 2;
+        }
+        levels[state.rows - 1][this.pos] = 15;
+        drawFrame(levels);
+        setStatus(`studies: step ${this.pos + 1}, loop ${this.loopStart + 1}-${this.loopEnd + 1}.`);
+      }
+    }
+
+    class Splice extends GridApp {
+      reset() {
+        this.pos = 0;
+        this.normalRow = 4;
+        this.stepRows = Array(state.cols).fill(this.normalRow);
+        this.rates = [-1.5, -1, -0.5, 0.5, 1, 1.5];
+        this.labels = ["rev++", "rev", "rev--", "slow", "one", "up"];
+        this.transpose = 1;
+        this.scan = true;
+        this.flash = Array.from({ length: state.rows }, () => Array(state.cols).fill(0));
+        setTimer(this, 4);
+      }
+
+      normalPattern() {
+        this.stepRows = Array(state.cols).fill(this.normalRow);
+        this.transpose = 1;
+        this.scan = true;
+        this.draw();
+      }
+
+      randomize() {
+        this.scan = true;
+        this.stepRows = this.stepRows.map((_, x) => (x % 4 === 0 || x % 7 === 2) ? 4 : (x % 5 === 0 ? 1 : -1));
+        this.draw();
+      }
+
+      play(x, row, accent = 1) {
+        const rate = this.rates[row] * this.transpose;
+        const reverse = rate < 0;
+        const pan = (x / Math.max(1, state.cols - 1)) * 2 - 1;
+        samples.playSlice(x, state.cols, Math.abs(rate), 0.28 * accent, reverse, pan, row <= 1 ? 1.7 : 1, row < 3 ? 6200 : 14000);
+        this.flash[row][x] = 15;
+      }
+
+      key(x, y, s) {
+        if (y < 6) {
+          if (!s) return;
+          this.play(x, y, 1.15);
+          this.stepRows[x] = this.stepRows[x] === y ? -1 : y;
+        } else if (y === 6) {
+          if (!s) return;
+          this.stepRows[x] = this.stepRows[x] < 0 ? 4 : -1;
+        } else {
+          if (x === 0 && s) {
+            samples.toggleRecord().then(() => this.draw());
+          }
+          else if (x === 1 && s) this.scan = !this.scan;
+          else if (x === 2 && s) this.normalPattern();
+          else if (x >= 4 && x < 8 && s) this.randomize();
+          else if (x >= 8 && s) {
+            const options = [0.5, 0.75, 1, 1.25, 1.5, 2, 0.667, 1.333];
+            this.transpose = options[x - 8];
+            audio.tone(180 + x * 24, 0.04, "sine", 0.04, 0, 0);
+          }
+        }
+        this.draw();
+      }
+
+      tick() {
+        this.flash = this.flash.map((row) => row.map((v) => Math.max(0, v - 4)));
+        if (this.scan) {
+          this.pos = (this.pos + 1) % state.cols;
+          const row = this.stepRows[this.pos];
+          if (row >= 0) this.play(this.pos, row, 0.9);
+        }
+        this.draw();
+      }
+
+      draw() {
+        const levels = makeLevels(0);
+        for (let y = 0; y < 6; y += 1) {
+          for (let x = 0; x < state.cols; x += 1) {
+            if (this.stepRows[x] === y) levels[y][x] = 8;
+            levels[y][x] = Math.max(levels[y][x], this.flash[y][x]);
+            if (x === this.pos && this.scan) levels[y][x] = Math.max(levels[y][x], 3);
+          }
+        }
+        for (let x = 0; x < state.cols; x += 1) levels[6][x] = this.stepRows[x] >= 0 ? 10 : 2;
+        levels[7][0] = samples.isRecording ? 15 : 8;
+        levels[7][1] = this.scan ? 12 : 3;
+        levels[7][2] = this.stepRows.every((row) => row === this.normalRow) && this.transpose === 1 ? 12 : 4;
+        for (let x = 4; x < 8; x += 1) levels[7][x] = 5;
+        for (let x = 8; x < state.cols; x += 1) levels[7][x] = 3 + Math.round((x - 8) / 7 * 8);
+        samples.paintRecordIndicator(levels);
+        drawFrame(levels);
+        if (!samples.isRecording && !samples.isStopping) {
+          setStatus(`splice: slice scan, ${samples.buffer ? samples.buffer.duration.toFixed(2) + "s" : "synthetic"} sample, rate ${this.transpose}.`);
+        }
+      }
+    }
+
+    class Undertow extends GridApp {
+      reset() {
+        this.nodes = new Map();
+        this.pulses = [];
+        this.tickCount = 0;
+        this.density = 4;
+        this.freeze = false;
+        this.seed();
+        setTimer(this, 3);
+      }
+
+      seed() {
+        this.nodes.clear();
+        [[2, 1, 1], [5, 5, 2], [9, 2, 3], [12, 6, 1]].forEach(([x, y, type]) => this.nodes.set(keyFor(x, y), type));
+      }
+
+      randomize() {
+        this.nodes.clear();
+        for (let i = 0; i < 10; i += 1) this.nodes.set(keyFor(Math.floor(Math.random() * state.cols), Math.floor(Math.random() * 7)), 1 + Math.floor(Math.random() * 3));
+        this.draw();
+      }
+
+      key(x, y, s) {
+        if (y < 7) {
+          if (!s) return;
+          const key = keyFor(x, y);
+          const next = ((this.nodes.get(key) || 0) + 1) % 4;
+          if (next) this.nodes.set(key, next);
+          else this.nodes.delete(key);
+          this.pulses.push({ x, y, age: 0, power: next || 1 });
+          samples.playSlice(x, state.cols, next === 2 ? 0.5 : 1, 0.22, next === 3, x / 8 - 1, 1.5);
+        } else {
+          if (x === 0 && s) {
+            samples.toggleRecord().then(() => this.draw());
+          }
+          else if (x === 1 && s) this.freeze = !this.freeze;
+          else if (x === 2 && s) this.seed();
+          else if (x === 3 && s) this.nodes.clear();
+          else if (x >= 8 && s) this.density = x - 7;
+        }
+        this.draw();
+      }
+
+      tick() {
+        this.tickCount += 1;
+        if (!this.freeze && this.tickCount % Math.max(2, 10 - this.density) === 0) {
+          for (const [key, type] of this.nodes) {
+            if (type === 1 || (type === 2 && this.tickCount % 2 === 0)) {
+              const [x, y] = key.split(",").map(Number);
+              this.pulses.push({ x, y, age: 0, power: type });
+            }
+          }
+        }
+
+        const next = [];
+        for (const pulse of this.pulses) {
+          pulse.age += 1;
+          for (const [key, type] of this.nodes) {
+            const [x, y] = key.split(",").map(Number);
+            const dist = Math.abs(x - pulse.x) + Math.abs(y - pulse.y);
+            if (dist === pulse.age) {
+              const reverse = type === 2 || pulse.power === 3;
+              const rate = type === 3 ? 0.5 : (pulse.power === 2 ? 1.5 : 1);
+              samples.playSlice(x, state.cols, rate, 0.12 + type * 0.04, reverse, x / 8 - 1, 1 + type * 0.4, 5000 + type * 2500);
+            }
+          }
+          if (pulse.age < 9) next.push(pulse);
+        }
+        this.pulses = next.slice(-64);
+        this.draw();
+      }
+
+      draw() {
+        const levels = makeLevels(0);
+        for (const pulse of this.pulses) {
+          const level = clamp(7 - pulse.age, 0, 6);
+          for (let y = 0; y < 7; y += 1) {
+            for (let x = 0; x < state.cols; x += 1) {
+              if (Math.abs(x - pulse.x) + Math.abs(y - pulse.y) === pulse.age) levels[y][x] = Math.max(levels[y][x], level);
+            }
+          }
+        }
+        for (const [key, type] of this.nodes) {
+          const [x, y] = key.split(",").map(Number);
+          levels[y][x] = type === 1 ? 15 : type === 2 ? 8 : 5;
+        }
+        levels[7][0] = samples.isRecording ? 15 : 8;
+        levels[7][1] = this.freeze ? 15 : 4;
+        levels[7][2] = 4;
+        levels[7][3] = 2;
+        for (let x = 8; x < state.cols; x += 1) levels[7][x] = x - 7 <= this.density ? 8 : 1;
+        samples.paintRecordIndicator(levels);
+        drawFrame(levels);
+        if (!samples.isRecording && !samples.isStopping) {
+          setStatus(`undertow: ${this.nodes.size} nodes, density ${this.density}, ${samples.buffer ? "mic sample" : "synthetic sample"}.`);
+        }
+      }
+    }
+
+    class Strata extends GridApp {
+      reset() {
+        this.rows = 6;
+        this.pattern = Array.from({ length: this.rows }, () => Array(state.cols).fill(0));
+        this.mute = Array(this.rows).fill(false);
+        this.pos = -1;
+        this.energy = 0.2;
+        this.targetEnergy = 0.2;
+        this.scene = 0;
+        this.chordIndex = 0;
+        this.heldFills = new Set();
+        this.heldFx = new Set();
+        this.chords = [
+          { name: "i add9", root: 45, bass: 33, chord: [45, 52, 57, 59, 64], scale: [0, 2, 3, 5, 7, 10, 12] },
+          { name: "VI maj7", root: 53, bass: 29, chord: [41, 48, 53, 57, 60, 64], scale: [0, 2, 4, 7, 9, 11, 12] },
+          { name: "III sus2", root: 48, bass: 36, chord: [36, 43, 50, 55, 60, 62], scale: [0, 2, 5, 7, 9, 12, 14] },
+          { name: "VII 6/9", root: 43, bass: 31, chord: [31, 38, 43, 50, 55, 59], scale: [0, 2, 4, 7, 9, 12, 14] },
+          { name: "iv min9", root: 50, bass: 26, chord: [38, 45, 50, 53, 57, 60], scale: [0, 2, 3, 5, 7, 10, 12] },
+          { name: "V sus", root: 52, bass: 28, chord: [40, 47, 52, 57, 59, 64], scale: [0, 2, 5, 7, 9, 10, 12] },
+          { name: "bII glow", root: 46, bass: 34, chord: [34, 41, 46, 53, 58, 62], scale: [0, 1, 5, 7, 8, 12, 13] },
+          { name: "i reprise", root: 57, bass: 33, chord: [33, 45, 52, 57, 60, 64], scale: [0, 2, 3, 7, 10, 12, 14] }
+        ];
+        this.makeScene(0, true);
+        setTimer(this, 4);
+      }
+
+      chord() {
+        return this.chords[this.chordIndex];
+      }
+
+      euclid(steps, pulses, rotate = 0) {
+        const row = Array(steps).fill(0);
+        for (let i = 0; i < pulses; i += 1) row[(Math.floor(i * steps / pulses) + rotate) % steps] = 1;
+        return row;
+      }
+
+      makeScene(scene, quiet = false) {
+        const s = wrap(scene, 4);
+        const kickRows = [[0, 4, 8, 12], [0, 6, 10, 14], [0, 8, 11], [0, 3, 8, 12]];
+        const chordRows = [[0, 8], [0, 6, 12], [4, 12], [0, 10]];
+        this.pattern[0] = Array.from({ length: state.cols }, (_, x) => kickRows[s].includes(x) ? 1 : 0);
+        this.pattern[1] = this.euclid(state.cols, [3, 4, 5, 4][s], [0, 1, 3, 2][s]);
+        this.pattern[2] = this.euclid(state.cols, [5, 7, 6, 8][s], [2, 0, 1, 3][s]).map((v, x) => (v && x % 4 !== 0) ? 1 : v);
+        this.pattern[3] = Array.from({ length: state.cols }, (_, x) => chordRows[s].includes(x) ? 1 : 0);
+        this.pattern[4] = this.euclid(state.cols, [5, 6, 7, 9][s], [1, 2, 0, 3][s]).map((v, x) => v && x % 2 ? 1 : 0);
+        this.pattern[5] = this.euclid(state.cols, [2, 3, 4, 5][s], [9, 5, 7, 11][s]);
+        this.scene = s;
+        if (!quiet) audio.bloom(this.chord().root, 0.45 + s * 0.08);
+      }
+
+      rotateRow(row, amount = 1) {
+        const r = this.pattern[row].slice();
+        for (let x = 0; x < state.cols; x += 1) this.pattern[row][x] = r[wrap(x - amount, state.cols)];
+      }
+
+      randomize() {
+        this.makeScene((this.scene + 1) % 4);
+        this.rotateRow(1, this.scene + this.chordIndex);
+        this.rotateRow(2, this.chordIndex % 4);
+        this.rotateRow(4, (this.scene * 2) % 5);
+        this.draw();
+      }
+
+      activeAt(row, x) {
+        if (this.pattern[row][x]) return true;
+        for (const fill of this.heldFills) {
+          const n = fill - 8;
+          if (row === 0 && n >= 2 && x % 4 === 2) return true;
+          if (row === 1 && n % 2 === 0 && x % 8 === 6) return true;
+          if (row === 2 && ((x + n) % Math.max(2, 5 - (n % 3)) === 0)) return true;
+          if (row === 3 && n >= 3 && x % 8 === 4) return true;
+          if (row === 4 && n >= 2 && x % 2 === (n % 2)) return true;
+          if (row === 5 && n >= 1 && x % 3 === 1) return true;
+        }
+        return false;
+      }
+
+      melodyNote(x, high = false) {
+        const harmony = this.chord();
+        const degree = harmony.scale[wrap(x + this.scene + this.chordIndex, harmony.scale.length)];
+        return harmony.root + degree + (high ? 12 : 0);
+      }
+
+      previewLayer(row, x) {
+        if (row === 0) audio.kick();
+        else if (row === 1) audio.bass(this.chord().bass + [0, 7, 12, 5][Math.floor(x / 4) % 4], 0.16, 0.1);
+        else if (row === 2) audio.voice(this.melodyNote(x), 0.13, 0.055, x / 8 - 1);
+        else if (row === 3) audio.pad(this.chord().chord, 0.7, 0.026);
+        else if (row === 4) audio.hat(0.045);
+        else audio.noiseBurst(0.09, 0.028, x / 8 - 1);
+      }
+
+      key(x, y, s) {
+        if (y < this.rows) {
+          if (!s) return;
+          this.pattern[y][x] ^= 1;
+          if (this.pattern[y][x]) this.previewLayer(y, x);
+        } else if (y === 6) {
+          if (!s) return;
+          if (x < this.rows) {
+            this.mute[x] = !this.mute[x];
+          } else if (x >= 8) {
+            this.chordIndex = x - 8;
+            this.targetEnergy = 0.42 + (this.chordIndex / 7) * 0.25;
+            audio.pad(this.chord().chord, 2.6, 0.075);
+          }
+        } else {
+          if (x < 4 && s) this.makeScene(x, true);
+          else if (x < 8 && s) {
+            this.makeScene((this.scene + x - 3) % 4, true);
+            this.rotateRow(2, x);
+          } else if (x >= 8 && x < 12) {
+            if (s) {
+              this.heldFills.add(x);
+              this.targetEnergy = Math.max(this.targetEnergy, 0.55 + ((x - 8) / 3) * 0.18);
+              audio.noiseBurst(0.14 + (x - 8) * 0.018, 0.04, x / 8 - 1);
+            } else {
+              this.heldFills.delete(x);
+            }
+          } else if (x >= 12) {
+            if (s) {
+              this.heldFx.add(x);
+              this.targetEnergy = Math.max(this.targetEnergy, 0.78);
+              if (x === 12) audio.dub(this.chord().root, 0.8);
+              if (x === 13) audio.voice(this.melodyNote(this.pos, true), 0.055, 0.09, 0.2);
+              if (x === 14) audio.crush(this.melodyNote(this.pos, true), 0.75);
+              if (x === 15) audio.bloom(this.chord().root, 0.9);
+            } else {
+              this.heldFx.delete(x);
+            }
+          }
+        }
+        this.draw();
+      }
+
+      tick() {
+        this.pos = (this.pos + 1) % state.cols;
+        this.energy += (this.targetEnergy - this.energy) * 0.12;
+        this.targetEnergy *= 0.992;
+        let hits = 0;
+        for (let y = 0; y < this.rows; y += 1) {
+          if (this.mute[y] || !this.activeAt(y, this.pos)) continue;
+          hits += 1;
+          if (y === 0) audio.kick();
+          else if (y === 1) audio.bass(this.chord().bass + [0, 7, 12, 5][Math.floor(this.pos / 4) % 4], 0.22 + this.energy * 0.15, 0.15);
+          else if (y === 2) audio.voice(this.melodyNote(this.pos), 0.2, 0.075 + this.energy * 0.05, this.pos / 8 - 1);
+          else if (y === 3) audio.pad(this.chord().chord, 1.4 + this.energy * 0.7, 0.032 + this.energy * 0.018);
+          else if (y === 4) audio.hat(0.035 + this.energy * 0.045);
+          else audio.noiseBurst(0.12 + this.energy * 0.24, 0.026 + this.energy * 0.045, (this.pos / state.cols) * 2 - 1);
+        }
+        if (this.heldFx.has(12) && this.pos % 4 === 0) audio.dub(this.chord().root + (this.pos % 8), 0.55);
+        if (this.heldFx.has(13)) audio.voice(this.melodyNote(this.pos, true), 0.045, 0.055, (this.pos % 4) / 2 - 1);
+        if (this.heldFx.has(14) && this.pos % 2 === 0) audio.crush(this.melodyNote(this.pos, true), 0.65);
+        if (this.heldFx.has(15) && this.pos % 8 === 0) audio.bloom(this.chord().root, 0.85);
+        if (hits >= 3 || this.pos === 0) audio.pad(this.chord().chord, 1.7, 0.025 + this.energy * 0.02);
+        this.draw();
+      }
+
+      draw() {
+        const levels = makeLevels(0);
+        for (let y = 0; y < this.rows; y += 1) {
+          for (let x = 0; x < state.cols; x += 1) {
+            if (this.pattern[y][x]) levels[y][x] = this.mute[y] ? 3 : 7 + Math.round(this.energy * 4);
+            else if (this.activeAt(y, x)) levels[y][x] = this.mute[y] ? 2 : 5;
+            if (x === this.pos) levels[y][x] = Math.max(levels[y][x], this.mute[y] ? 4 : 12);
+          }
+        }
+        for (let x = 0; x < this.rows; x += 1) levels[6][x] = this.mute[x] ? 2 : 10;
+        for (let x = 8; x < state.cols; x += 1) levels[6][x] = x - 8 === this.chordIndex ? 15 : 4;
+        for (let x = 0; x < 4; x += 1) levels[7][x] = x === this.scene ? 15 : 5;
+        for (let x = 4; x < 8; x += 1) levels[7][x] = 5;
+        for (let x = 8; x < 12; x += 1) levels[7][x] = this.heldFills.has(x) ? 15 : 4;
+        for (let x = 12; x < state.cols; x += 1) levels[7][x] = this.heldFx.has(x) ? 15 : 6;
+        drawFrame(levels);
+        setStatus(`strata: scene ${this.scene + 1}, ${this.chord().name}, fills ${this.heldFills.size}, fx ${this.heldFx.size}, step ${this.pos + 1}.`);
+      }
+    }
+
+    class Lumen extends GridApp {
+      reset() {
+        this.nodes = new Map();
+        this.pulses = [];
+        this.tickCount = 0;
+        this.scale = [0, 2, 5, 7, 9, 12, 14, 17, 19, 24];
+        this.seed();
+        setTimer(this, 4);
+      }
+
+      seed() {
+        [[2, 2, 1], [5, 5, 2], [8, 3, 1], [11, 1, 3], [13, 6, 2]].forEach(([x, y, type]) => {
+          this.nodes.set(keyFor(x, y), type);
+        });
+      }
+
+      randomize() {
+        this.nodes.clear();
+        const count = 8 + Math.floor(Math.random() * 12);
+        for (let i = 0; i < count; i += 1) {
+          this.nodes.set(keyFor(Math.floor(Math.random() * state.cols), Math.floor(Math.random() * state.rows)), 1 + Math.floor(Math.random() * 3));
+        }
+        this.pulses = [];
+        this.draw();
+      }
+
+      key(x, y, s) {
+        if (!s) return;
+        const key = keyFor(x, y);
+        const next = ((this.nodes.get(key) || 0) + 1) % 4;
+        if (next === 0) this.nodes.delete(key);
+        else this.nodes.set(key, next);
+        this.pulses.push({ x, y, age: 0, power: next || 1 });
+        audio.bloom(42 + y * 2 + x % 5, 0.35 + next * 0.16);
+        this.draw();
+      }
+
+      tick() {
+        this.tickCount += 1;
+        if (this.tickCount % 5 === 0) {
+          for (const [key, type] of this.nodes) {
+            if (type === 1) {
+              const [x, y] = key.split(",").map(Number);
+              this.pulses.push({ x, y, age: 0, power: type });
+            }
+          }
+        }
+
+        const next = [];
+        for (const pulse of this.pulses) {
+          pulse.age += 1;
+          const radius = pulse.age;
+          for (const [key, type] of this.nodes) {
+            const [x, y] = key.split(",").map(Number);
+            const dist = Math.abs(x - pulse.x) + Math.abs(y - pulse.y);
+            if (dist === radius) {
+              const note = 42 + this.scale[(x + y + type + this.tickCount) % this.scale.length] + (type === 3 ? 12 : 0);
+              if (type === 1) audio.pluck(note, 0.12, 0.11, "triangle");
+              if (type === 2) audio.bass(note - 12, 0.2, 0.13);
+              if (type === 3) audio.chord([note, note + 7, note + 12], 0.55, 0.035);
+            }
+          }
+          if (pulse.age < 10) next.push(pulse);
+        }
+        this.pulses = next;
+        if (this.tickCount % 16 === 0 && this.nodes.size) audio.noiseBurst(0.18, 0.025, 0);
+        this.draw();
+      }
+
+      draw() {
+        const levels = makeLevels(0);
+        for (const pulse of this.pulses) {
+          const radius = pulse.age;
+          const level = clamp(12 - radius, 1, 11);
+          for (let y = 0; y < state.rows; y += 1) {
+            for (let x = 0; x < state.cols; x += 1) {
+              const dist = Math.abs(x - pulse.x) + Math.abs(y - pulse.y);
+              if (dist === radius) levels[y][x] = Math.max(levels[y][x], level);
+            }
+          }
+        }
+        for (const [key, type] of this.nodes) {
+          const [x, y] = key.split(",").map(Number);
+          levels[y][x] = type === 1 ? 15 : type === 2 ? 11 : 8;
+        }
+        drawFrame(levels);
+        setStatus(`lumen: ${this.nodes.size} nodes, ${this.pulses.length} waves.`);
+      }
+    }
+
+    class MeadowphysicsMini extends GridApp {
+      reset() {
+        this.rows = state.rows;
+        this.counts = Array.from({ length: this.rows }, (_, y) => Math.min(state.cols, 4 + y * 2));
+        this.min = this.counts.slice();
+        this.max = this.counts.slice();
+        this.positions = this.counts.map((count) => count - 1);
+        this.speeds = Array.from({ length: this.rows }, (_, y) => 1 + Math.floor(y / 2));
+        this.speedTicks = Array(this.rows).fill(0);
+        this.running = Array(this.rows).fill(true);
+        this.playOnSet = Array(this.rows).fill(false);
+        this.resetTargets = Array.from({ length: this.rows }, (_, y) => new Set([y]));
+        this.ruleTargets = Array.from({ length: this.rows }, (_, y) => y);
+        this.rules = Array.from({ length: this.rows }, () => "inc");
+        this.held = new Set();
+        this.configRow = null;
+        this.ruleRow = null;
+        this.flashes = Array(this.rows).fill(0);
+        this.notes = [36, 43, 48, 53, 55, 60, 65, 67, 72, 77, 79, 84, 89, 91, 96, 101];
+        setTimer(this, 4);
+      }
+
+      randomize() {
+        for (let y = 0; y < this.rows; y += 1) {
+          const a = 2 + Math.floor(Math.random() * (state.cols - 1));
+          const b = 2 + Math.floor(Math.random() * (state.cols - 1));
+          this.min[y] = Math.min(a, b);
+          this.max[y] = Math.max(a, b);
+          this.counts[y] = this.min[y];
+          this.positions[y] = this.counts[y] - 1;
+          this.speeds[y] = 1 + Math.floor(Math.random() * 8);
+        }
+        this.draw();
+      }
+
+      setCount(row, count) {
+        const bounded = clamp(count, 2, state.cols);
+        const heldInRow = [...this.held].find((key) => Number(key.split(",")[1]) === row && Number(key.split(",")[0]) > 0);
+        if (heldInRow) {
+          const heldCount = Number(heldInRow.split(",")[0]) + 1;
+          this.min[row] = Math.min(heldCount, bounded);
+          this.max[row] = Math.max(heldCount, bounded);
+        } else {
+          this.min[row] = bounded;
+          this.max[row] = bounded;
+        }
+        this.counts[row] = bounded;
+        this.positions[row] = bounded - 1;
+        if (this.playOnSet[row]) this.playEventSound(row);
+      }
+
+      key(x, y, s) {
+        const key = keyFor(x, y);
+        if (!s) {
+          this.held.delete(key);
+          if (this.configRow === y && x === 0) this.configRow = null;
+          if (this.ruleRow === y && x === 1) this.ruleRow = null;
+          this.draw();
+          return;
+        }
+        this.held.add(key);
+        if (x === 0) {
+          this.configRow = y;
+          this.ruleRow = null;
+          this.draw();
+          return;
+        }
+        if (x === 1 && this.configRow === y) {
+          this.ruleRow = y;
+          this.draw();
+          return;
+        }
+        if (this.ruleRow !== null) {
+          const source = this.ruleRow;
+          if (x >= 4 && x <= 6) this.ruleTargets[source] = y;
+          if (x >= 8) this.rules[source] = ["none", "inc", "dec", "min", "max", "rand", "pole", "stop"][clamp(y, 0, 7)];
+          this.draw();
+          return;
+        }
+        if (this.configRow !== null) {
+          const source = this.configRow;
+          if (x === 2) this.running[source] = !this.running[source];
+          else if (x === 3) this.resetRow(source);
+          else if (x === 4) this.playOnSet[source] = !this.playOnSet[source];
+          else if (x >= 5 && x <= 6) {
+            if (this.resetTargets[source].has(y)) this.resetTargets[source].delete(y);
+            else this.resetTargets[source].add(y);
+          } else if (x >= 8) {
+            this.speeds[source] = x - 7;
+            this.speedTicks[source] = 0;
+          }
+          this.draw();
+          return;
+        }
+        this.setCount(y, x + 1);
+        this.draw();
+      }
+
+      resetRow(row) {
+        this.positions[row] = this.counts[row] - 1;
+        this.speedTicks[row] = 0;
+      }
+
+      applyRule(source) {
+        const row = this.ruleTargets[source];
+        const rule = this.rules[source];
+        if (rule === "none") return;
+        if (rule === "stop") {
+          this.running[row] = false;
+          return;
+        }
+        if (rule === "inc") this.counts[row] = this.counts[row] >= this.max[row] ? this.min[row] : this.counts[row] + 1;
+        if (rule === "dec") this.counts[row] = this.counts[row] <= this.min[row] ? this.max[row] : this.counts[row] - 1;
+        if (rule === "min") this.counts[row] = this.min[row];
+        if (rule === "max") this.counts[row] = this.max[row];
+        if (rule === "rand") this.counts[row] = this.min[row] + Math.floor(Math.random() * (this.max[row] - this.min[row] + 1));
+        if (rule === "pole") {
+          const distMin = Math.abs(this.counts[row] - this.min[row]);
+          const distMax = Math.abs(this.max[row] - this.counts[row]);
+          this.counts[row] = distMin > distMax ? this.min[row] : this.max[row];
+        }
+        this.positions[row] = Math.min(this.positions[row], this.counts[row] - 1);
+      }
+
+      triggerRow(row) {
+        this.flashes[row] = 5;
+        this.playEventSound(row);
+        for (const target of this.resetTargets[row]) this.resetRow(target);
+        if (!this.resetTargets[row].has(row)) this.running[row] = false;
+        this.applyRule(row);
+      }
+
+      playEventSound(row) {
+        audio.pluck(this.notes[row % this.notes.length], 0.11, 0.15, row % 2 ? "triangle" : "square");
+      }
+
+      tick() {
+        for (let row = 0; row < this.rows; row += 1) {
+          if (!this.running[row]) continue;
+          this.speedTicks[row] += 1;
+          if (this.speedTicks[row] < this.speeds[row]) continue;
+          this.speedTicks[row] = 0;
+          this.positions[row] -= 1;
+          if (this.positions[row] < 0) this.triggerRow(row);
+        }
+        this.flashes = this.flashes.map((v) => Math.max(0, v - 1));
+        this.draw();
+      }
+
+      draw() {
+        const levels = makeLevels(0);
+        if (this.ruleRow !== null) {
+          const ruleNames = ["none", "inc", "dec", "min", "max", "rand", "pole", "stop"];
+          for (let y = 0; y < this.rows; y += 1) {
+            levels[y][4] = this.ruleTargets[this.ruleRow] === y ? 15 : 3;
+            levels[y][5] = this.ruleTargets[this.ruleRow] === y ? 10 : 2;
+            levels[y][6] = this.ruleTargets[this.ruleRow] === y ? 8 : 2;
+            const ruleY = ruleNames.indexOf(this.rules[this.ruleRow]);
+            for (let x = 8; x < state.cols; x += 1) levels[y][x] = y === ruleY ? 12 : 1;
+          }
+          levels[this.ruleRow][0] = 10;
+          levels[this.ruleRow][1] = 15;
+        } else if (this.configRow !== null) {
+          const row = this.configRow;
+          levels[row][0] = 15;
+          levels[row][2] = this.running[row] ? 12 : 3;
+          levels[row][3] = 8;
+          levels[row][4] = this.playOnSet[row] ? 12 : 5;
+          for (let y = 0; y < this.rows; y += 1) {
+            levels[y][5] = this.resetTargets[row].has(y) ? 13 : 2;
+            levels[y][6] = this.resetTargets[row].has(y) ? 8 : 2;
+          }
+          for (let x = 8; x < state.cols; x += 1) levels[row][x] = x - 7 <= this.speeds[row] ? 10 : 2;
+        } else {
+          for (let y = 0; y < this.rows; y += 1) {
+            for (let x = this.min[y] - 1; x <= this.max[y] - 1; x += 1) levels[y][x] = 2;
+            levels[y][this.counts[y] - 1] = Math.max(levels[y][this.counts[y] - 1], 7);
+            const pos = clamp(this.positions[y], 0, state.cols - 1);
+            levels[y][pos] = this.flashes[y] > 0 ? 15 : (this.running[y] ? 10 : 4);
+            levels[y][0] = Math.max(levels[y][0], 3);
+          }
+        }
+        drawFrame(levels);
+        setStatus(`Meadowphysics: counts/ranges, speed divisions, resets, rules. row 1 ${this.counts[0]} /${this.speeds[0]} ${this.rules[0]}->${this.ruleTargets[0] + 1}.`);
+      }
+    }
+
+    class AwakeMini extends GridApp {
+      reset() {
+        this.split = Math.floor(state.rows / 2);
+        this.one = Array(state.cols).fill(0);
+        this.two = Array(state.cols).fill(0);
+        [0, 2, 4, 5, 6, 7, 6].forEach((v, i) => { if (i < state.cols) this.one[i] = clamp(v, 0, this.split); });
+        [3, 4, 0, 0, 2].forEach((v, i) => { if (i < state.cols) this.two[i] = clamp(v, 0, state.rows - this.split); });
+        this.oneLength = Math.min(8, state.cols);
+        this.twoLength = Math.min(7, state.cols);
+        this.onePos = -1;
+        this.twoPos = -1;
+        this.scale = [0, 2, 3, 5, 7, 9, 10, 12, 14, 15, 17, 19, 21];
+        setTimer(this, 2);
+      }
+
+      randomize() {
+        for (let x = 0; x < state.cols; x += 1) {
+          this.one[x] = Math.random() < 0.65 ? Math.floor(Math.random() * (this.split + 1)) : 0;
+          this.two[x] = Math.random() < 0.35 ? Math.floor(Math.random() * (state.rows - this.split + 1)) : 0;
+        }
+        this.draw();
+      }
+
+      key(x, y, s) {
+        if (!s) return;
+        if (y < this.split) {
+          const value = this.split - y;
+          this.one[x] = this.one[x] === value ? 0 : value;
+        } else {
+          const value = state.rows - y;
+          this.two[x] = this.two[x] === value ? 0 : value;
+        }
+        this.draw();
+      }
+
+      tick() {
+        this.onePos = (this.onePos + 1) % this.oneLength;
+        this.twoPos = (this.twoPos + 1) % this.twoLength;
+        if (this.one[this.onePos] > 0) {
+          const degree = this.one[this.onePos] + this.two[this.twoPos];
+          const note = 48 + this.scale[degree % this.scale.length];
+          audio.pluck(note, 0.24, 0.2, "square");
+        }
+        this.draw();
+      }
+
+      draw() {
+        const levels = makeLevels(0);
+        for (let x = 0; x < state.cols; x += 1) {
+          if (this.one[x]) levels[this.split - this.one[x]][x] = x === this.onePos ? 15 : 7;
+          if (this.two[x]) levels[state.rows - this.two[x]][x] = x === this.twoPos ? 15 : 6;
+          if (x === this.onePos) levels[0][x] = Math.max(levels[0][x], 3);
+          if (x === this.twoPos) levels[this.split][x] = Math.max(levels[this.split][x], 3);
+        }
+        drawFrame(levels);
+        setStatus(`Awake mini: melody ${this.onePos + 1}/${this.oneLength}, transpose ${this.twoPos + 1}/${this.twoLength}.`);
+      }
+    }
+
+    class LoomMini extends GridApp {
+      reset() {
+        this.notes = [];
+        this.triggers = [];
+        this.mark = null;
+        this.trails = makeLevels(0);
+        this.scale = [36, 38, 41, 43, 45, 48, 50, 53, 55, 57, 60, 62, 65, 67, 69, 72];
+        setTimer(this, 4);
+      }
+
+      randomize() {
+        this.notes = [];
+        this.triggers = [];
+        for (let i = 0; i < 4; i += 1) {
+          this.notes.push({ x: Math.floor(Math.random() * state.cols), head: Math.floor(Math.random() * state.rows), len: 1 + Math.floor(Math.random() * 4), dir: Math.random() < 0.5 ? -1 : 1 });
+          this.triggers.push({ y: Math.floor(Math.random() * state.rows), head: Math.floor(Math.random() * state.cols), len: 1 + Math.floor(Math.random() * 5), dir: Math.random() < 0.5 ? -1 : 1 });
+        }
+        this.draw();
+      }
+
+      key(x, y, s) {
+        if (!s) return;
+        if (!this.mark) {
+          this.mark = { x, y };
+        } else if (this.mark.x === x && this.mark.y !== y) {
+          this.notes = this.notes.filter((n) => n.x !== x);
+          this.notes.push({ x, head: y, len: Math.max(1, Math.abs(y - this.mark.y) + 1), dir: y > this.mark.y ? 1 : -1 });
+          this.mark = null;
+        } else if (this.mark.y === y && this.mark.x !== x) {
+          this.triggers = this.triggers.filter((t) => t.y !== y);
+          this.triggers.push({ y, head: x, len: Math.max(1, Math.abs(x - this.mark.x) + 1), dir: x > this.mark.x ? 1 : -1 });
+          this.mark = null;
+        } else {
+          this.mark = { x, y };
+        }
+        this.draw();
+      }
+
+      segmentContains(head, len, dir, value, max) {
+        for (let i = 0; i < len; i += 1) {
+          if (wrap(head - i * dir, max) === value) return true;
+        }
+        return false;
+      }
+
+      tick() {
+        this.trails = this.trails.map((row) => row.map((v) => Math.max(0, v - 1)));
+        for (const note of this.notes) note.head = wrap(note.head + note.dir, state.rows);
+        for (const trig of this.triggers) trig.head = wrap(trig.head + trig.dir, state.cols);
+
+        for (const note of this.notes) {
+          for (const trig of this.triggers) {
+            const noteHit = this.segmentContains(note.head, note.len, note.dir, trig.y, state.rows);
+            const trigHit = this.segmentContains(trig.head, trig.len, trig.dir, note.x, state.cols);
+            if (noteHit && trigHit) {
+              this.trails[trig.y][note.x] = 15;
+              audio.pluck(this.scale[note.x % this.scale.length], 0.22, 0.17, "triangle", 0);
+            }
+          }
+        }
+        this.draw();
+      }
+
+      draw() {
+        const levels = this.trails.map((row) => row.slice());
+        for (const note of this.notes) {
+          for (let i = 0; i < note.len; i += 1) levels[wrap(note.head - i * note.dir, state.rows)][note.x] = Math.max(levels[wrap(note.head - i * note.dir, state.rows)][note.x], 8);
+        }
+        for (const trig of this.triggers) {
+          for (let i = 0; i < trig.len; i += 1) levels[trig.y][wrap(trig.head - i * trig.dir, state.cols)] = Math.max(levels[trig.y][wrap(trig.head - i * trig.dir, state.cols)], 6);
+        }
+        if (this.mark) levels[this.mark.y][this.mark.x] = 15;
+        drawFrame(levels);
+        setStatus(`Loom mini: ${this.notes.length} note threads, ${this.triggers.length} trigger threads.`);
+      }
+    }
+
+    class BuoysMini extends GridApp {
+      reset() {
+        this.pilings = new Set();
+        this.buoys = new Set();
+        this.prevDepth = makeLevels(0);
+        this.depth = makeLevels(0);
+        this.shape = [3, 8, 14, 12, 10, 8, 5, 1];
+        this.phase = 0;
+        setTimer(this, 3);
+      }
+
+      randomize() {
+        this.pilings.clear();
+        this.buoys.clear();
+        while (this.buoys.size < 8) this.buoys.add(keyFor(Math.floor(Math.random() * state.cols), Math.floor(Math.random() * state.rows)));
+        while (this.pilings.size < 10) {
+          const key = keyFor(Math.floor(Math.random() * state.cols), Math.floor(Math.random() * state.rows));
+          if (!this.buoys.has(key)) this.pilings.add(key);
+        }
+        this.draw();
+      }
+
+      key(x, y, s) {
+        if (!s) return;
+        const key = keyFor(x, y);
+        if (this.buoys.has(key)) {
+          this.buoys.delete(key);
+          this.pilings.add(key);
+          this.pilingSplash(x, y);
+        } else if (this.pilings.has(key)) {
+          this.pilings.delete(key);
+        } else {
+          this.buoys.add(key);
+        }
+        this.draw();
+      }
+
+      pilingSplash(x, y) {
+        for (let dx = -1; dx <= 3; dx += 1) {
+          const px = x + dx;
+          if (px >= 0 && px < state.cols) this.depth[y][px] = dx <= 0 ? 0 : Math.min(this.depth[y][px], dx);
+        }
+        audio.noiseBurst(0.08, 0.035, x / 8 - 1);
+      }
+
+      isBlocked(x, y) {
+        return this.pilings.has(keyFor(x, y));
+      }
+
+      tick() {
+        this.prevDepth = this.depth.map((row) => row.slice());
+        const next = makeLevels(0);
+        for (let y = 0; y < state.rows; y += 1) {
+          for (let x = state.cols - 1; x > 0; x -= 1) {
+            if (this.isBlocked(x, y)) {
+              next[y][x] = 0;
+            } else if (this.isBlocked(x - 1, y)) {
+              next[y][x] = Math.max(0, this.depth[y][x] - 4);
+            } else {
+              const incoming = this.depth[y][x - 1] || 0;
+              const spillUp = y > 0 && !this.isBlocked(x - 1, y - 1) ? Math.max(0, this.depth[y - 1][x - 1] - 9) : 0;
+              const spillDown = y < state.rows - 1 && !this.isBlocked(x - 1, y + 1) ? Math.max(0, this.depth[y + 1][x - 1] - 11) : 0;
+              const shadow = this.pilings.has(keyFor(x - 2, y)) || this.pilings.has(keyFor(x - 3, y)) ? 5 : 1;
+              next[y][x] = clamp(Math.max(incoming - shadow, spillUp, spillDown), 0, 14);
+            }
+          }
+          next[y][0] = this.isBlocked(0, y) ? 0 : this.shape[(this.phase + y) % this.shape.length];
+        }
+        this.phase = (this.phase + 1) % this.shape.length;
+        this.depth = next;
+        for (const key of this.buoys) {
+          const [x, y] = key.split(",").map(Number);
+          const d = this.depth[y]?.[x] ?? 0;
+          const was = this.prevDepth[y]?.[x] ?? 0;
+          if (d >= 7 && was < 7) {
+            audio.pluck(48 + y * 3 + (x % 5), 0.25, 0.1 + d / 90, "sine");
+          }
+        }
+        this.draw();
+      }
+
+      draw() {
+        const levels = this.depth.map((row) => row.map((v) => clamp(v, 0, 14)));
+        for (const key of this.pilings) {
+          const [x, y] = key.split(",").map(Number);
+          for (let dx = 1; dx <= 3; dx += 1) {
+            if (x + dx < state.cols) levels[y][x + dx] = Math.min(levels[y][x + dx], 2);
+          }
+          levels[y][x] = 5;
+        }
+        for (const key of this.buoys) {
+          const [x, y] = key.split(",").map(Number);
+          levels[y][x] = 15;
+        }
+        drawFrame(levels);
+        setStatus(`Buoys mini: ${this.buoys.size} buoys, ${this.pilings.size} pilings.`);
+      }
+    }
+
+    class ArcologiesMini extends GridApp {
+      reset() {
+        this.cells = new Map();
+        this.signals = [];
+        this.generation = 0;
+        setTimer(this, 3);
+      }
+
+      randomize() {
+        this.cells.clear();
+        for (let i = 0; i < 5; i += 1) this.cells.set(keyFor(Math.floor(Math.random() * state.cols), Math.floor(Math.random() * state.rows)), "emitter");
+        for (let i = 0; i < 6; i += 1) this.cells.set(keyFor(Math.floor(Math.random() * state.cols), Math.floor(Math.random() * state.rows)), "note");
+        for (let i = 0; i < 6; i += 1) this.cells.set(keyFor(Math.floor(Math.random() * state.cols), Math.floor(Math.random() * state.rows)), "reflector");
+        this.draw();
+      }
+
+      key(x, y, s) {
+        if (!s) return;
+        const key = keyFor(x, y);
+        const order = [undefined, "emitter", "note", "reflector", undefined];
+        const current = this.cells.get(key);
+        const next = order[order.indexOf(current) + 1];
+        if (next) this.cells.set(key, next);
+        else this.cells.delete(key);
+        this.draw();
+      }
+
+      tick() {
+        this.generation += 1;
+        const dirs = [[1, 0], [0, 1], [-1, 0], [0, -1]];
+        for (const [key, type] of this.cells) {
+          if (type === "emitter" && this.generation % 3 === 0) {
+            const [x, y] = key.split(",").map(Number);
+            this.signals.push({ x, y, dir: this.generation % 4 });
+          }
+        }
+
+        const nextSignals = [];
+        for (const sig of this.signals) {
+          sig.x += dirs[sig.dir][0];
+          sig.y += dirs[sig.dir][1];
+          if (sig.x < 0 || sig.x >= state.cols || sig.y < 0 || sig.y >= state.rows) continue;
+          const type = this.cells.get(keyFor(sig.x, sig.y));
+          if (type === "reflector") sig.dir = (sig.dir + 1) % 4;
+          if (type === "note") audio.pluck(50 + sig.y * 3 + (sig.x % 7), 0.16, 0.16, "sawtooth");
+          nextSignals.push(sig);
+        }
+        this.signals = nextSignals.slice(-48);
+        this.draw();
+      }
+
+      draw() {
+        const levels = makeLevels(0);
+        for (const [key, type] of this.cells) {
+          const [x, y] = key.split(",").map(Number);
+          levels[y][x] = type === "emitter" ? 11 : type === "note" ? 7 : 4;
+        }
+        for (const sig of this.signals) levels[sig.y][sig.x] = 15;
+        drawFrame(levels);
+        setStatus(`Arcologies mini: ${this.cells.size} cells, ${this.signals.length} signals.`);
+      }
+    }
+
+    class LifeAudio extends GridApp {
+      reset() {
+        this.cells = new Set();
+        this.generation = 0;
+        this.seed();
+        setTimer(this, 2);
+      }
+
+      seed() {
+        const cx = Math.floor(state.cols / 2) - 1;
+        const cy = Math.floor(state.rows / 2) - 1;
+        [[1, 0], [2, 1], [0, 2], [1, 2], [2, 2]].forEach(([dx, dy]) => {
+          this.cells.add(keyFor(cx + dx, cy + dy));
+        });
+      }
+
+      randomize() {
+        this.cells.clear();
+        for (let y = 0; y < state.rows; y += 1) {
+          for (let x = 0; x < state.cols; x += 1) {
+            if (Math.random() < 0.23) this.cells.add(keyFor(x, y));
+          }
+        }
+        this.draw();
+      }
+
+      key(x, y, s) {
+        if (!s) return;
+        const key = keyFor(x, y);
+        if (this.cells.has(key)) this.cells.delete(key);
+        else this.cells.add(key);
+        this.draw();
+      }
+
+      count(x, y) {
+        let n = 0;
+        for (let dy = -1; dy <= 1; dy += 1) {
+          for (let dx = -1; dx <= 1; dx += 1) {
+            if (dx || dy) {
+              const nx = wrap(x + dx, state.cols);
+              const ny = wrap(y + dy, state.rows);
+              if (this.cells.has(keyFor(nx, ny))) n += 1;
+            }
+          }
+        }
+        return n;
+      }
+
+      tick() {
+        const next = new Set();
+        let births = 0;
+        for (let y = 0; y < state.rows; y += 1) {
+          for (let x = 0; x < state.cols; x += 1) {
+            const key = keyFor(x, y);
+            const live = this.cells.has(key);
+            const n = this.count(x, y);
+            if ((live && (n === 2 || n === 3)) || (!live && n === 3)) {
+              next.add(key);
+              if (!live) births += 1;
+            }
+          }
+        }
+        this.cells = next;
+        this.generation += 1;
+        if (births > 0) audio.pluck(45 + (births % 18), 0.12, Math.min(0.24, 0.04 + births / 80), "triangle");
+        if (this.generation % 8 === 0 && this.cells.size > 0) audio.hat(0.04);
+        this.draw();
+      }
+
+      draw() {
+        const levels = makeLevels(0);
+        for (const key of this.cells) {
+          const [x, y] = key.split(",").map(Number);
+          levels[y][x] = 15;
+        }
+        drawFrame(levels);
+        setStatus(`Game of Life: generation ${this.generation}, ${this.cells.size} live cells.`);
+      }
+    }
+
+    const APPS = {
+      strata: {
+        label: "strata",
+        title: "strata",
+        summary: "A six-layer performance grid: drums, bass, notes, chords, dust, and noise sit above two transition rows for scene shifts and energy blooms.",
+        source: "New app designed from the research pass: grid studies' clarity, Meadowphysics' row logic, Loom's crossings, and Buoys' big-field transitions.",
+        help: [
+          "Rows 1-6 toggle the six sound layers.",
+          "Row 7: keys 1-6 mute/unmute layers; keys 9-16 pick the chord and play a warm pad.",
+          "Row 8: keys 1-4 jump scenes; keys 5-8 make composed variations; keys 9-12 are momentary fills; keys 13-16 are dub/stutter/crush/wash effects.",
+          "Synth touch: x opens the shared filter, y lengthens decay."
+        ],
+        factory: () => new Strata(APPS.strata)
+      },
+      lumen: {
+        label: "lumen",
+        title: "lumen",
+        summary: "A wave-field instrument: every cell is a playable node, and pulses radiate through the grid to make bass, notes, and chord blooms.",
+        source: "New app designed from Arcologies signals, Buoys field motion, and Life-like propagation, but kept immediate and finger-playable.",
+        help: [
+          "Press any cell to cycle empty, spark, anchor, bloom.",
+          "Spark nodes emit repeating waves; anchors make bass; blooms make soft chords.",
+          "Randomize plants a fresh field; Reset returns to a small composed seed.",
+          "Synth touch: x opens the shared filter, y lengthens decay."
+        ],
+        factory: () => new Lumen(APPS.lumen)
+      },
+      splice: {
+        label: "splice",
+        title: "splice",
+        summary: "A dry, immediate sample cutter: one captured or loaded sample is split into 16 slices, with startup pre-filled as a straight 1x forward scan.",
+        source: "New sample app informed by mlr-style slice launching and softcut's multiple playheads, rate, reverse, and loop-region thinking.",
+        help: [
+          "Use Load sample, or enable mic then row 8 key 1 as latch record. Saved/loaded samples are made loud automatically.",
+          "Rows 1-6 play the column slice at reverse/forward rates and assign it to the scanner. Startup assigns every slice to the 1x forward row.",
+          "Row 7 toggles sequenced slices; row 8 key 2 starts/stops scanning; key 3 restores the straight 1x pattern; keys 9-16 choose global tape speed."
+        ],
+        factory: () => new Splice(APPS.splice)
+      },
+      undertow: {
+        label: "undertow",
+        title: "undertow",
+        summary: "A sample weather system: a single recording becomes ripples, reverse pulls, slow grains, and pitched fragments across the grid.",
+        source: "New sample app inspired by softcut overdub/phase ideas, Buoys field motion, and grid-native node placement.",
+        help: [
+          "Use Load sample, or enable mic then row 8 key 1 as latch record. Saved/loaded samples are made loud automatically.",
+          "Rows 1-7 cycle empty, emitter, reverse anchor, slow bloom nodes.",
+          "Row 8 key 2 freezes waves, key 3 reseeds, key 4 clears, keys 9-16 set density."
+        ],
+        factory: () => new Undertow(APPS.undertow)
+      },
+      studies: {
+        label: "studies",
+        title: "studies",
+        summary: "The original grid studies step sequencer: a single left-to-right playhead scans toggle rows.",
+        source: "Based on monome grid studies Max/Node/Python sequencer lessons.",
+        help: [
+          "Press rows 1-6 to toggle notes.",
+          "Bottom row jumps the playhead; hold one bottom key and press another to set a loop.",
+          "Randomize fills a sparse pattern.",
+          "Synth touch: x opens the shared filter, y lengthens decay."
+        ],
+        factory: () => new StudiesSequencer(APPS.studies)
+      },
+      meadow: {
+        label: "counts",
+        title: "counts",
+        summary: "A WebAudio reduction of Meadowphysics: eight right-to-left counters with count ranges, clock divisions, reset routing, and simple rule sends.",
+        source: "Reworked from the monome Meadowphysics v2 / Ansible docs: independent row counters, ranges, speed divisions, reset destinations, and inc/dec/min/max/rand/pole/stop rules.",
+        help: [
+          "Press columns 2-16 on a row to set that row's count; hold one count and press another in the same row to set a range.",
+          "Hold column 1 on a row for config: col 3 start/stop, col 4 reset, cols 6-7 reset targets, right half speed division.",
+          "While holding column 1, press column 2 for rules: cols 5-7 choose destination row, right half chooses none/inc/dec/min/max/rand/pole/stop by vertical position.",
+          "Synth touch: x opens the shared filter, y lengthens decay."
+        ],
+        factory: () => new MeadowphysicsMini(APPS.meadow)
+      },
+      awake: {
+        label: "drift",
+        title: "drift",
+        summary: "A two-loop melodic reducer inspired by tehn's awake: one loop plays notes, the other transposes them.",
+        source: "Read from tehn/awake, especially the two loop data arrays, PolyPerc engine, and gridredraw/key mapping.",
+        help: [
+          "Top half edits the melody loop.",
+          "Bottom half edits the transpose loop.",
+          "The two playheads advance at different lengths for slow phase shifts.",
+          "Synth touch: x opens the shared filter, y lengthens decay."
+        ],
+        factory: () => new AwakeMini(APPS.awake)
+      },
+      loom: {
+        label: "threads",
+        title: "threads",
+        summary: "A pattern-weaving sequencer inspired by markeats' Loom, where moving note threads and trigger threads make sound when they cross.",
+        source: "Read from markwheeler/loom, especially add_note, add_trigger, advance_step, and grid_key.",
+        help: [
+          "Press a key to mark a point.",
+          "Press another key in the same column to add a vertical note thread.",
+          "Press another key in the same row to add a horizontal trigger thread.",
+          "Synth touch: x opens the shared filter, y lengthens decay."
+        ],
+        factory: () => new LoomMini(APPS.loom)
+      },
+      buoys: {
+        label: "pins",
+        title: "pins",
+        summary: "A tide-field instrument inspired by buoys: waves move left to right, buoys sing when lifted, pilings interrupt the water.",
+        source: "Read from lylepmills/buoys, especially the tide shape arrays, particle/tide update, and buoy/piling key behavior.",
+        help: [
+          "Press an empty key to place a buoy.",
+          "Press a bright buoy to turn it into a dim piling.",
+          "Press a dim piling to clear it.",
+          "Synth touch: x opens the shared filter, y lengthens decay."
+        ],
+        factory: () => new BuoysMini(APPS.buoys)
+      },
+      arcologies: {
+        label: "signals",
+        title: "signals",
+        summary: "A compact signal-and-cell environment inspired by arcologies: emitters send signals, reflectors bend them, note cells speak.",
+        source: "Read from northern-information/arcologies, especially Signal.lua, Cell.lua, _grid.lua, and sound.lua.",
+        help: [
+          "Press a key repeatedly to cycle empty, emitter, note, reflector.",
+          "Emitters periodically launch moving signals.",
+          "Signals trigger note cells and turn at reflectors.",
+          "Synth touch: x opens the shared filter, y lengthens decay."
+        ],
+        factory: () => new ArcologiesMini(APPS.arcologies)
+      },
+      life: {
+        label: "life",
+        title: "life",
+        summary: "The earlier Game of Life mode, now with small audio events from births and population pulses.",
+        source: "Local mode, using the same grid frame renderer as the app ports.",
+        help: [
+          "Press keys to toggle live cells.",
+          "Births create pitched ticks; population pulses add a faint noise tick.",
+          "Randomize makes a fresh starting soup.",
+          "Synth touch: x opens the shared filter, y lengthens decay."
+        ],
+        factory: () => new LifeAudio(APPS.life)
+      }
+    };
+
+    const APP_ORDER = ["splice", "undertow", "strata", "lumen", "studies", "meadow", "awake", "loom", "buoys", "arcologies", "life"];
+
+    function renderTabs() {
+      els.tabs.replaceChildren();
+      for (const key of APP_ORDER) {
+        const spec = APPS[key];
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "secondary tab";
+        button.textContent = spec.label;
+        button.dataset.app = key;
+        button.addEventListener("click", async () => {
+          await audio.ensure();
+          selectApp(key);
+        });
+        els.tabs.appendChild(button);
+      }
+    }
+
+    function renderReadme(spec) {
+      els.title.textContent = spec.title;
+      els.summary.textContent = spec.summary;
+      els.help.replaceChildren(...spec.help.map((item) => {
+        const li = document.createElement("li");
+        li.textContent = item;
+        return li;
+      }));
+      els.source.textContent = spec.source;
+    }
+
+    function selectApp(key) {
+      if (state.app) state.app.stop();
+      state.appKey = key;
+      const sampleApp = key === "splice" || key === "undertow";
+      els.synthPanel.hidden = sampleApp;
+      els.samplePanel.hidden = !sampleApp;
+      samples.updateSampleUi();
+      const activeTab = document.querySelector(`.tab[data-app="${key}"]`);
+      if (activeTab && window.getComputedStyle) {
+        const appColor = window.getComputedStyle(activeTab).getPropertyValue("--app");
+        if (appColor) document.documentElement.style.setProperty("--app", appColor);
+      }
+      state.app = APPS[key].factory();
+      renderReadme(APPS[key]);
+      document.querySelectorAll(".tab").forEach((tab) => tab.classList.toggle("active", tab.dataset.app === key));
+      state.app.start();
+    }
+
+    function handleGridSize(cols, rows) {
+      state.gotSizeReport = true;
+      renderGrid(cols || DEFAULT_COLS, rows || DEFAULT_ROWS);
+      selectApp(state.appKey);
+      setStatus(`Connected: ${state.cols} x ${state.rows} grid.`);
+    }
+
+    function handleGridKey(x, y, pressed) {
+      if (x < 0 || y < 0 || x >= state.cols || y >= state.rows) return;
+      maybeShapeSynthFromGrid(x, y, pressed);
+      state.app?.key(x, y, pressed);
+    }
+
+    async function connect() {
+      await audio.ensure();
+      try {
+        state.gotSizeReport = false;
+
+        renderGrid(DEFAULT_COLS, DEFAULT_ROWS);
+        setStatus("Opening grid port...");
+        await gridSerial.connect();
+        els.connect.disabled = true;
+        els.disconnect.disabled = false;
+        els.clear.disabled = false;
+
+        setStatus("Connected. Requesting grid size...");
+        selectApp(state.appKey);
+
+        window.setTimeout(() => {
+          if (gridSerial.connected && !state.gotSizeReport) {
+            setStatus("Connected. Using 16 x 8 layout until the grid reports its size.");
+          }
+        }, 700);
+      } catch (error) {
+        console.error(error);
+        await disconnect(`Connection failed: ${error.message}`, true);
+      }
+    }
+
+    async function disconnect(finalStatus = "Disconnected.", warning = false) {
+      if (state.app) state.app.stop();
+      try {
+        await gridSerial.disconnect();
+      } catch (error) {
+        console.warn(error);
+      }
+      state.gotSizeReport = false;
+      els.connect.disabled = false;
+      els.disconnect.disabled = true;
+      els.clear.disabled = true;
+      selectApp(state.appKey);
+      setStatus(finalStatus, warning);
+    }
+
+    els.connect.addEventListener("click", connect);
+    els.disconnect.addEventListener("click", () => disconnect());
+    els.clear.addEventListener("click", clearHardware);
+    els.audio.addEventListener("click", () => audio.ensure());
+    els.bpm.addEventListener("input", () => updateBpm(els.bpm.value));
+    els.mic.addEventListener("click", () => {
+      if (samples.isRecording || samples.isStopping) samples.toggleRecord();
+      else samples.ensureMic();
+    });
+    els.loadSample.addEventListener("click", () => els.sampleFile.click());
+    els.panelLoadSample.addEventListener("click", () => els.sampleFile.click());
+    els.panelRecord.addEventListener("click", () => samples.toggleRecord());
+    els.sampleFile.addEventListener("change", async () => {
+      const file = els.sampleFile.files?.[0];
+      await samples.loadFile(file);
+      els.sampleFile.value = "";
+    });
+    els.randomize.addEventListener("click", async () => {
+      await audio.ensure();
+      state.app?.randomize();
+    });
+    els.reset.addEventListener("click", async () => {
+      await audio.ensure();
+      selectApp(state.appKey);
+    });
+
+    els.grid.addEventListener("pointerdown", async (event) => {
+      const cell = event.target.closest(".cell");
+      if (!cell) return;
+      await audio.ensure();
+      const x = Number(cell.dataset.x);
+      const y = Number(cell.dataset.y);
+      state.pointerDown = keyFor(x, y);
+      cell.setPointerCapture?.(event.pointerId);
+      maybeShapeSynthFromGrid(x, y, true);
+      state.app?.key(x, y, true);
+    });
+
+    els.grid.addEventListener("pointerup", (event) => {
+      const cell = event.target.closest(".cell");
+      if (!cell || !state.pointerDown) return;
+      const [x, y] = state.pointerDown.split(",").map(Number);
+      state.pointerDown = null;
+      state.app?.key(x, y, false);
+    });
+
+    window.addEventListener("beforeunload", () => {
+      if (state.app) state.app.stop();
+    });
+
+    renderGrid(DEFAULT_COLS, DEFAULT_ROWS);
+    renderTabs();
+    bindSynthControls();
+    updateBpm(state.bpm);
+    selectApp(state.appKey);
+    samples.loadDefault();
+  </script>
+</body>
+</html>

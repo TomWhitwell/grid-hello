@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>grid hello world</title>
+  <style>
+    body {
+      margin: 20px;
+      background: #f4f3ef;
+      color: #111;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
+
+    button {
+      border: 1px solid #aca89b;
+      border-radius: 2px;
+      background: #e1dfd6;
+      color: inherit;
+      cursor: pointer;
+      font: inherit;
+      min-height: 34px;
+      padding: 0 12px;
+      text-transform: lowercase;
+    }
+
+    #mirror {
+      display: grid;
+      grid-template-columns: repeat(16, 18px);
+      gap: 3px;
+      margin-top: 16px;
+    }
+
+    .key {
+      width: 18px;
+      height: 18px;
+      border: 1px solid #aca89b;
+      background: #e1dfd6;
+    }
+
+    .key.on {
+      background: #111;
+      border-color: #111;
+    }
+
+    pre {
+      color: #62625d;
+    }
+  </style>
+</head>
+<body>
+  <button id="connect">connect grid</button>
+  <pre id="log">waiting</pre>
+  <div id="mirror" aria-label="grid mirror"></div>
+
+  <script type="module">
+    import { MonomeGridSerial, makeGridLevels } from "./grid-serial.js";
+
+    const mirror = document.querySelector("#mirror");
+    const log = document.querySelector("#log");
+    let levels = makeGridLevels(16, 8);
+
+    const grid = new MonomeGridSerial({
+      onSize(cols, rows) {
+        levels = makeGridLevels(cols, rows);
+        mirror.style.gridTemplateColumns = `repeat(${cols}, 18px)`;
+        renderMirror();
+        log.textContent = `connected: ${cols} x ${rows}`;
+      },
+      onStatus(message) {
+        log.textContent = message;
+      },
+      onKey(x, y, down) {
+        levels[y][x] = down ? 15 : 0;
+        renderMirror();
+        grid.draw(levels);
+        log.textContent = `key ${x}, ${y}: ${down ? "down" : "up"}`;
+      }
+    });
+
+    function renderMirror() {
+      mirror.replaceChildren();
+      for (let y = 0; y < grid.rows; y += 1) {
+        for (let x = 0; x < grid.cols; x += 1) {
+          const key = document.createElement("div");
+          key.className = levels[y]?.[x] ? "key on" : "key";
+          mirror.appendChild(key);
+        }
+      }
+    }
+
+    document.querySelector("#connect").addEventListener("click", async () => {
+      try {
+        await grid.connect();
+      } catch (error) {
+        log.textContent = error.message;
+      }
+    });
+
+    renderMirror();
+  </script>
+</body>
+</html>

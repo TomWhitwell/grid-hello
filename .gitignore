@@ -1,0 +1,14 @@
+.DS_Store
+._*
+Thumbs.db
+
+# local/editor clutter
+.vscode/
+.idea/
+*.swp
+
+# dependency/build folders, in case this ever gets experimented on
+node_modules/
+dist/
+build/
+

@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>direct web serial grid notes</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f4f3ef;
+      --fg: #111111;
+      --muted: #62625d;
+      --line: #cbc8bf;
+      --panel: #f8f7f2;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #12130f;
+        --fg: #efeee7;
+        --muted: #aaa79c;
+        --line: #3a3932;
+        --panel: #1b1c18;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      line-height: 1.5;
+    }
+
+    main {
+      width: min(900px, calc(100vw - 28px));
+      margin: 0 auto;
+      padding: 20px 0 48px;
+    }
+
+    header,
+    section {
+      border-top: 1px solid var(--line);
+      padding-top: 14px;
+      margin-top: 20px;
+    }
+
+    header {
+      border-top: 0;
+      margin-top: 0;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin: 0;
+    }
+
+    h1 {
+      font-size: clamp(1.6rem, 4vw, 2.6rem);
+      line-height: 1.05;
+      font-weight: 500;
+      text-transform: lowercase;
+    }
+
+    h2 {
+      margin-bottom: 10px;
+      font-size: 1.2rem;
+      font-weight: 500;
+      text-transform: lowercase;
+    }
+
+    h3 {
+      margin-top: 18px;
+      font-size: 1rem;
+      font-weight: 500;
+      text-transform: lowercase;
+    }
+
+    p,
+    li {
+      color: var(--muted);
+    }
+
+    a {
+      color: var(--fg);
+    }
+
+    ul,
+    ol {
+      margin: 10px 0 0;
+      padding-left: 1.35rem;
+    }
+
+    code,
+    pre {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      color: var(--fg);
+    }
+
+    pre {
+      overflow-x: auto;
+      margin: 12px 0 0;
+      padding: 13px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      font-size: 0.86rem;
+    }
+
+    table {
+      width: 100%;
+      margin-top: 12px;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    th,
+    td {
+      padding: 7px 8px;
+      border: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>direct web serial grid notes</h1>
+      <p>A practical guide to talking to a monome grid directly from a browser, without serialosc, OSC, Node, npm, or a bridge process.</p>
+      <p><a href="index.html">back to instruments</a></p>
+    </header>
+
+    <section>
+      <h2>what this is</h2>
+      <p>Modern monome grids are USB serial devices. The usual desktop path is grid -> serialosc -> OSC client. Web Serial lets Chrome/Edge open the USB serial port directly from a local or HTTPS page, so a web app can read grid key packets and write LED packets by using the raw serial protocol.</p>
+      <p>This is lower level than serialosc. You are responsible for packet parsing, LED packing, port ownership, and browser permissions.</p>
+    </section>
+
+    <section>
+      <h2>requirements</h2>
+      <ul>
+        <li>Chrome, Chromium, Edge, or another browser with the Web Serial API.</li>
+        <li>A secure context: <code>http://localhost</code>, <code>http://127.0.0.1</code>, or HTTPS.</li>
+        <li>serialosc stopped, or at least not holding the grid serial port.</li>
+        <li>A user gesture for connection. <code>navigator.serial.requestPort()</code> must be called from a click or similar event.</li>
+      </ul>
+      <pre><code>brew services stop serialosc
+python3 -m http.server 8000
+# open http://localhost:8000/ in Chrome or Edge
+
+# after use, restore normal monome app access
+brew services start serialosc</code></pre>
+    </section>
+
+    <section>
+      <h2>protocol pieces used here</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>message</th>
+            <th>bytes</th>
+            <th>meaning</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>query size</td>
+            <td><code>0x05</code></td>
+            <td>Ask the grid to report its size.</td>
+          </tr>
+          <tr>
+            <td>size report</td>
+            <td><code>0x03, width, height</code></td>
+            <td>Returned by the grid after a size query.</td>
+          </tr>
+          <tr>
+            <td>key up</td>
+            <td><code>0x20, x, y</code></td>
+            <td>A key was released.</td>
+          </tr>
+          <tr>
+            <td>key down</td>
+            <td><code>0x21, x, y</code></td>
+            <td>A key was pressed.</td>
+          </tr>
+          <tr>
+            <td>all LEDs off</td>
+            <td><code>0x12</code></td>
+            <td>Clear grid LEDs.</td>
+          </tr>
+          <tr>
+            <td>varibright map</td>
+            <td><code>0x1A, x, y, 32 packed bytes</code></td>
+            <td>Write one 8x8 LED tile with 0-15 brightness values.</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>Coordinates are zero-indexed. On a 16x8 grid, <code>x</code> is <code>0..15</code> and <code>y</code> is <code>0..7</code>.</p>
+    </section>
+
+    <section>
+      <h2>tiny library</h2>
+      <p>The smallest reusable piece in this folder is <a href="grid-serial.js"><code>grid-serial.js</code></a>. It is a plain browser ES module: no build step, no npm package, no server code. Import it, create a grid, provide callbacks, then draw 0-15 LED levels.</p>
+      <pre><code>import { MonomeGridSerial, makeGridLevels } from "./grid-serial.js";
+
+const levels = makeGridLevels(16, 8);
+
+const grid = new MonomeGridSerial({
+  onKey(x, y, down) {
+    levels[y][x] = down ? 15 : 0;
+    grid.draw(levels);
+  },
+  onSize(cols, rows) {
+    console.log(`grid size: ${cols} x ${rows}`);
+  }
+});
+
+document.querySelector("button").addEventListener("click", () =&gt; {
+  grid.connect();
+});</code></pre>
+      <p>The library intentionally stays small. It handles Web Serial connection, packet buffering, size reports, key callbacks, LED clearing, and 8x8 varibright packing. Your page still owns the instrument state and display.</p>
+    </section>
+
+    <section>
+      <h2>library hello world</h2>
+      <p>Open <a href="hello-grid.html"><code>hello-grid.html</code></a> for the light example. This is the whole useful part: press a grid key, mirror it on screen, and light the same key on the hardware.</p>
+      <pre><code>&lt;button id="connect"&gt;connect grid&lt;/button&gt;
+&lt;pre id="log"&gt;waiting&lt;/pre&gt;
+&lt;div id="mirror"&gt;&lt;/div&gt;
+
+&lt;script type="module"&gt;
+  import { MonomeGridSerial, makeGridLevels } from "./grid-serial.js";
+
+  const mirror = document.querySelector("#mirror");
+  const log = document.querySelector("#log");
+  let levels = makeGridLevels(16, 8);
+
+  const grid = new MonomeGridSerial({
+    onSize(cols, rows) {
+      levels = makeGridLevels(cols, rows);
+      mirror.style.gridTemplateColumns = `repeat(${cols}, 18px)`;
+      renderMirror();
+      log.textContent = `connected: ${cols} x ${rows}`;
+    },
+    onKey(x, y, down) {
+      levels[y][x] = down ? 15 : 0;
+      renderMirror();
+      grid.draw(levels);
+      log.textContent = `key ${x}, ${y}: ${down ? "down" : "up"}`;
+    },
+    onStatus(message) {
+      log.textContent = message;
+    }
+  });
+
+  function renderMirror() {
+    mirror.replaceChildren();
+    for (let y = 0; y &lt; grid.rows; y += 1) {
+      for (let x = 0; x &lt; grid.cols; x += 1) {
+        const key = document.createElement("div");
+        key.className = levels[y]?.[x] ? "key on" : "key";
+        mirror.appendChild(key);
+      }
+    }
+  }
+
+  document.querySelector("#connect").addEventListener("click", () =&gt; {
+    grid.connect().catch((error) =&gt; {
+      log.textContent = error.message;
+    });
+  });
+&lt;/script&gt;</code></pre>
+    </section>
+
+    <section>
+      <h2>no-library reference</h2>
+      <p>This complete HTML page shows the lower-level version behind the library: connect to a grid, mirror key presses in memory, and light pressed keys. It assumes a 16x8 layout until the grid reports size.</p>
+      <pre><code>&lt;!doctype html&gt;
+&lt;button id="connect"&gt;connect grid&lt;/button&gt;
+&lt;pre id="log"&gt;&lt;/pre&gt;
+
+&lt;script&gt;
+const MSG = {
+  SIZE_REQUEST: 0x05,
+  SIZE_REPORT: 0x03,
+  LED_ALL_OFF: 0x12,
+  LED_LEVEL_MAP: 0x1A,
+  KEY_UP: 0x20,
+  KEY_DOWN: 0x21
+};
+
+let port, reader, writer;
+let cols = 16;
+let rows = 8;
+let pending = [];
+let levels = Array.from({ length: rows }, () =&gt; Array(cols).fill(0));
+
+const log = (text) =&gt; {
+  document.querySelector("#log").textContent = text;
+};
+
+async function write(bytes) {
+  if (writer) await writer.write(new Uint8Array(bytes));
+}
+
+function resizeGrid(c, r) {
+  cols = c || 16;
+  rows = r || 8;
+  levels = Array.from({ length: rows }, () =&gt; Array(cols).fill(0));
+}
+
+function packetLength(first) {
+  if (first === MSG.SIZE_REPORT || first === MSG.KEY_UP || first === MSG.KEY_DOWN) return 3;
+  return 1;
+}
+
+async function consume(bytes) {
+  pending.push(...bytes);
+  while (pending.length) {
+    const len = packetLength(pending[0]);
+    if (pending.length &lt; len) return;
+    await handlePacket(pending.splice(0, len));
+  }
+}
+
+async function handlePacket(packet) {
+  const [type, a, b] = packet;
+
+  if (type === MSG.SIZE_REPORT) {
+    resizeGrid(a, b);
+    log(`grid size: ${cols} x ${rows}`);
+    await draw();
+    return;
+  }
+
+  if (type !== MSG.KEY_UP &amp;&amp; type !== MSG.KEY_DOWN) return;
+  if (a &gt;= cols || b &gt;= rows) return;
+
+  const pressed = type === MSG.KEY_DOWN;
+  levels[b][a] = pressed ? 15 : 0;
+  log(`key ${a}, ${b}: ${pressed ? "down" : "up"}`);
+  await draw();
+}
+
+function pack8x8(x0, y0) {
+  const packed = [];
+  for (let i = 0; i &lt; 32; i += 1) {
+    const aIndex = i * 2;
+    const bIndex = aIndex + 1;
+    const ax = x0 + (aIndex % 8);
+    const ay = y0 + Math.floor(aIndex / 8);
+    const bx = x0 + (bIndex % 8);
+    const by = y0 + Math.floor(bIndex / 8);
+    const a = Math.max(0, Math.min(15, Math.round(levels[ay]?.[ax] ?? 0)));
+    const b = Math.max(0, Math.min(15, Math.round(levels[by]?.[bx] ?? 0)));
+    packed.push((a &lt;&lt; 4) | b);
+  }
+  return packed;
+}
+
+async function draw() {
+  for (let y = 0; y &lt; rows; y += 8) {
+    for (let x = 0; x &lt; cols; x += 8) {
+      await write([MSG.LED_LEVEL_MAP, x, y, ...pack8x8(x, y)]);
+    }
+  }
+}
+
+async function readLoop() {
+  while (port?.readable) {
+    reader = port.readable.getReader();
+    try {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        if (value) await consume(value);
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  }
+}
+
+document.querySelector("#connect").addEventListener("click", async () =&gt; {
+  if (!("serial" in navigator)) {
+    log("Web Serial is unavailable. Use Chrome or Edge.");
+    return;
+  }
+
+  port = await navigator.serial.requestPort();
+  await port.open({ baudRate: 115200, dataBits: 8, stopBits: 1, parity: "none", flowControl: "none" });
+  writer = port.writable.getWriter();
+
+  readLoop();
+  await write([MSG.LED_ALL_OFF]);
+  await write([MSG.SIZE_REQUEST]);
+  log("connected");
+});
+&lt;/script&gt;</code></pre>
+    </section>
+
+    <section>
+      <h2>led packing</h2>
+      <p>The varibright LED message writes one 8x8 tile at a time. There are 64 LED levels, each 0-15. Two 4-bit levels are packed into one byte, so the payload is 32 bytes.</p>
+      <pre><code>// first cell goes in the high nibble, second in the low nibble
+const packedByte = (levelA &lt;&lt; 4) | levelB;</code></pre>
+      <p>For a 16x8 grid, send two maps: one at <code>x=0,y=0</code> and one at <code>x=8,y=0</code>. For 16x16, send four maps.</p>
+      <p>Physical LED response does not necessarily feel linear. In this project the app computes 0-15 frames, then applies a hardware brightness curve before sending to the grid so only active hits are fully bright.</p>
+    </section>
+
+    <section>
+      <h2>important gotchas</h2>
+      <ul>
+        <li><strong>serialosc conflict:</strong> if serialosc owns the port, the browser may fail to open it. Stop serialosc first.</li>
+        <li><strong>serialosc restart:</strong> after using a direct Web Serial page, run <code>brew services start serialosc</code> if you want regular monome apps to use the grid again.</li>
+        <li><strong>browser support:</strong> Web Serial is Chromium-only in practice. Safari and Firefox are not suitable for this.</li>
+        <li><strong>permission:</strong> the port picker only opens from a user gesture. You cannot auto-connect on page load.</li>
+        <li><strong>secure context:</strong> use localhost or HTTPS. Opening the file directly with <code>file://</code> is not enough for Web Serial.</li>
+        <li><strong>packet boundaries:</strong> serial reads may split or combine packets. Always buffer bytes and parse complete packets.</li>
+        <li><strong>LED write rate:</strong> do not fire unlimited LED frames. Coalesce redraws if your app animates quickly.</li>
+        <li><strong>disconnect cleanup:</strong> release reader/writer locks and clear LEDs before closing the port.</li>
+        <li><strong>device choice:</strong> the browser picker shows serial devices. Pick the monome grid, not another USB serial device.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>a reusable shape</h2>
+      <p>For a real app, keep the grid transport separate from the instrument logic. The transport should expose only a few operations.</p>
+      <pre><code>const grid = {
+  cols: 16,
+  rows: 8,
+  onKey: (x, y, down) =&gt; {},
+  connect: async () =&gt; {},
+  draw: async (levels) =&gt; {},
+  clear: async () =&gt; {}
+};
+
+// Your instrument can then be just:
+function key(x, y, down) {
+  if (!down) return;
+  pattern[y][x] = !pattern[y][x];
+  grid.draw(renderPattern(pattern));
+}</code></pre>
+      <p>This makes it easy to build alternate renderers: physical grid, browser mirror, debugging console, or a simulated grid for development without hardware.</p>
+    </section>
+
+    <section>
+      <h2>references</h2>
+      <ul>
+        <li><a href="https://monome.org/docs/serialosc/serial.txt">monome serial protocol reference</a></li>
+        <li><a href="https://monome.org/docs/grid/grid-computer/">monome grid computer docs</a></li>
+        <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_Serial_API">MDN Web Serial API</a></li>
+        <li><a href="index.html">this project's instrument page</a></li>
+        <li><a href="grid-serial.js">tiny direct-grid library</a></li>
+        <li><a href="hello-grid.html">library hello-world page</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
