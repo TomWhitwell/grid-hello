@@ -2161,7 +2161,7 @@
           }
         }
         drawFrame(levels);
-        setStatus(`Meadowphysics: counts/ranges, speed divisions, resets, rules. row 1 ${this.counts[0]} /${this.speeds[0]} ${this.rules[0]}->${this.ruleTargets[0] + 1}.`);
+        setStatus(`counts: ranges, speed divisions, resets, rules. row 1 ${this.counts[0]} /${this.speeds[0]} ${this.rules[0]}->${this.ruleTargets[0] + 1}.`);
       }
     }
 
@@ -2220,7 +2220,7 @@
           if (x === this.twoPos) levels[this.split][x] = Math.max(levels[this.split][x], 3);
         }
         drawFrame(levels);
-        setStatus(`Awake mini: melody ${this.onePos + 1}/${this.oneLength}, transpose ${this.twoPos + 1}/${this.twoLength}.`);
+        setStatus(`drift: melody ${this.onePos + 1}/${this.oneLength}, transpose ${this.twoPos + 1}/${this.twoLength}.`);
       }
     }
 
@@ -2297,7 +2297,7 @@
         }
         if (this.mark) levels[this.mark.y][this.mark.x] = 15;
         drawFrame(levels);
-        setStatus(`Loom mini: ${this.notes.length} note threads, ${this.triggers.length} trigger threads.`);
+        setStatus(`threads: ${this.notes.length} note threads, ${this.triggers.length} trigger threads.`);
       }
     }
 
@@ -2396,7 +2396,7 @@
           levels[y][x] = 15;
         }
         drawFrame(levels);
-        setStatus(`Buoys mini: ${this.buoys.size} buoys, ${this.pilings.size} pilings.`);
+        setStatus(`pins: ${this.buoys.size} buoys, ${this.pilings.size} pilings.`);
       }
     }
 
@@ -2459,7 +2459,7 @@
         }
         for (const sig of this.signals) levels[sig.y][sig.x] = 15;
         drawFrame(levels);
-        setStatus(`Arcologies mini: ${this.cells.size} cells, ${this.signals.length} signals.`);
+        setStatus(`signals: ${this.cells.size} cells, ${this.signals.length} signals.`);
       }
     }
 
@@ -2556,7 +2556,7 @@
           levels[y][x] = 15;
         }
         drawFrame(levels);
-        setStatus(`Game of Life: generation ${this.generation}, ${this.cells.size} live cells.`);
+        setStatus(`life: generation ${this.generation}, ${this.cells.size} live cells.`);
       }
     }
 
@@ -2627,7 +2627,7 @@
       meadow: {
         label: "counts",
         title: "counts",
-        summary: "A WebAudio reduction of Meadowphysics: eight right-to-left counters with count ranges, clock divisions, reset routing, and simple rule sends.",
+        summary: "Eight right-to-left counters with count ranges, clock divisions, reset routing, and simple rule sends.",
         source: "Reworked from the monome Meadowphysics v2 / Ansible docs: independent row counters, ranges, speed divisions, reset destinations, and inc/dec/min/max/rand/pole/stop rules.",
         help: [
           "Press columns 2-16 on a row to set that row's count; hold one count and press another in the same row to set a range.",
@@ -2640,7 +2640,7 @@
       awake: {
         label: "drift",
         title: "drift",
-        summary: "A two-loop melodic reducer inspired by tehn's awake: one loop plays notes, the other transposes them.",
+        summary: "A two-loop melodic reducer: one loop plays notes, the other transposes them.",
         source: "Read from tehn/awake, especially the two loop data arrays, PolyPerc engine, and gridredraw/key mapping.",
         help: [
           "Top half edits the melody loop.",
@@ -2653,7 +2653,7 @@
       loom: {
         label: "threads",
         title: "threads",
-        summary: "A pattern-weaving sequencer inspired by markeats' Loom, where moving note threads and trigger threads make sound when they cross.",
+        summary: "A pattern-weaving sequencer where moving note threads and trigger threads make sound when they cross.",
         source: "Read from markwheeler/loom, especially add_note, add_trigger, advance_step, and grid_key.",
         help: [
           "Press a key to mark a point.",
@@ -2666,7 +2666,7 @@
       buoys: {
         label: "pins",
         title: "pins",
-        summary: "A tide-field instrument inspired by buoys: waves move left to right, buoys sing when lifted, pilings interrupt the water.",
+        summary: "A tide-field instrument: waves move left to right, buoys sing when lifted, pilings interrupt the water.",
         source: "Read from lylepmills/buoys, especially the tide shape arrays, particle/tide update, and buoy/piling key behavior.",
         help: [
           "Press an empty key to place a buoy.",
@@ -2679,7 +2679,7 @@
       arcologies: {
         label: "signals",
         title: "signals",
-        summary: "A compact signal-and-cell environment inspired by arcologies: emitters send signals, reflectors bend them, note cells speak.",
+        summary: "A compact signal-and-cell environment: emitters send signals, reflectors bend them, note cells speak.",
         source: "Read from northern-information/arcologies, especially Signal.lua, Cell.lua, _grid.lua, and sound.lua.",
         help: [
           "Press a key repeatedly to cycle empty, emitter, note, reflector.",
